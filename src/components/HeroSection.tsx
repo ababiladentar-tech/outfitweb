@@ -17,6 +17,9 @@ interface HeroModelItem {
   brandOrigin: string;
   imageUrl: string;
   paletteColor: string;
+  material: string;
+  silhouette: string;
+  toneMatch: string;
 }
 
 export const HeroSection: React.FC<HeroSectionProps> = ({
@@ -24,7 +27,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onReference,
   onOpenOnboarding
 }) => {
-  // Curated High-Definition, Crystal-Clear Fashion Models that cycle dynamically
+  // Curated High-Definition, Crystal-Clear Fashion Models that cycle dynamically with artisan specs
   const heroModels: HeroModelItem[] = [
     {
       id: 'model-1',
@@ -32,7 +35,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       category: 'Casual Chic',
       brandOrigin: 'Atelier Senja • Bandung',
       imageUrl: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1000&q=85',
-      paletteColor: '#2F4858'
+      paletteColor: '#2F4858',
+      material: 'Katun Poplin & Denim 12oz',
+      silhouette: 'Structured Relaxed • S-M',
+      toneMatch: 'Cool & Neutral Tone'
     },
     {
       id: 'model-2',
@@ -40,7 +46,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       category: 'Romantic Formal',
       brandOrigin: 'Kala Studio • Solo',
       imageUrl: 'https://images.unsplash.com/photo-1496747611176-843222e1e57c?auto=format&fit=crop&w=1000&q=85',
-      paletteColor: '#C5A086'
+      paletteColor: '#C5A086',
+      material: 'Sutra Rayon Drape Lokal',
+      silhouette: 'A-Line Flowing • All Size',
+      toneMatch: 'Warm Autumn Tone'
     },
     {
       id: 'model-3',
@@ -48,7 +57,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       category: 'Smart Executive',
       brandOrigin: 'Urban Mode • Jakarta',
       imageUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1000&q=85',
-      paletteColor: '#162D24'
+      paletteColor: '#162D24',
+      material: 'Semi-Wool Blend & Linen',
+      silhouette: 'Tailored Hourglass • Fit M',
+      toneMatch: 'Deep Forest Classic'
     },
     {
       id: 'model-4',
@@ -56,7 +68,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       category: 'Modest Sporty',
       brandOrigin: 'Modest Chic • Tasikmalaya',
       imageUrl: 'https://images.unsplash.com/photo-1509631179647-0177331693ae?auto=format&fit=crop&w=1000&q=85',
-      paletteColor: '#8C6D58'
+      paletteColor: '#8C6D58',
+      material: 'Pashmina Sutra & Suede',
+      silhouette: 'Modest Drape • All Size',
+      toneMatch: 'Warm Earthy Tone'
     },
     {
       id: 'model-5',
@@ -64,7 +79,10 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
       category: 'Streetwear Edgy',
       brandOrigin: 'Denim Lab • Pekalongan',
       imageUrl: 'https://images.unsplash.com/photo-1529139574466-a303027c1d8b?auto=format&fit=crop&w=1000&q=85',
-      paletteColor: '#1A2B4C'
+      paletteColor: '#1A2B4C',
+      material: 'Katun 24s & Denim Selvedge',
+      silhouette: 'Boxy Drop-Shoulder • L',
+      toneMatch: 'Monochrome Clean'
     }
   ];
 
@@ -109,20 +127,30 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   return (
     <div className="flex flex-col w-full bg-[#EDECE6]">
-      {/* 1. HERO SECTION matching Page 1 */}
+      {/* 1. HERO SECTION: Editorial Atelier with Floating Spec Pill */}
       <section className="relative w-full min-h-[calc(100vh-80px)] flex items-center bg-[#EDECE6] overflow-hidden border-b border-[#DCDAD2]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 items-center">
-          {/* Left Column: Headline & Action Buttons matching Page 1 */}
+        {/* Soft Ambient Depth Accents */}
+        <div className="absolute top-1/4 -left-32 w-80 sm:w-96 h-80 sm:h-96 rounded-full bg-[#8EA89D]/12 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-8 right-8 w-72 sm:w-96 h-72 sm:h-96 rounded-full bg-[#E58B94]/10 blur-3xl pointer-events-none" />
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 items-center relative z-10">
+          {/* Left Column: Headline & Action Buttons with Editorial Atelier Hierarchy */}
           <div className="lg:col-span-7 space-y-6 sm:space-y-8 text-left z-10">
-            <span className="text-xs font-semibold uppercase tracking-widest text-[#2F4F42]">
-              Kurasi Gaya Personal & Panduan Ukuran Pas
-            </span>
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#162D24]/6 border border-[#2F4F42]/15 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-[#2F4F42]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#52B788] animate-pulse" />
+              <span>Kurasi Gaya Personal & Panduan Ukuran Pas</span>
+            </div>
 
             <div className="space-y-4">
-              <h1 className="text-4xl sm:text-6xl md:text-7xl font-serif font-bold text-[#162D24] tracking-tight leading-[1.08]">
+              <h1 className="text-4xl sm:text-6xl md:text-7xl font-serif font-bold text-[#162D24] tracking-tight leading-[1.06]">
                 Temukan Outfit
                 <br />
-                <span className="italic text-[#2F4F42]">Terbaikmu.</span>
+                <span className="italic font-serif font-normal text-[#2F4F42] relative inline-block">
+                  Terbaikmu.
+                  <svg className="absolute -bottom-1.5 left-0 w-full h-2 text-[#8EA89D]/50" viewBox="0 0 100 8" preserveAspectRatio="none">
+                    <path d="M0,5 Q50,0 100,5" stroke="currentColor" strokeWidth="2.5" fill="none" />
+                  </svg>
+                </span>
               </h1>
 
               <p className="text-base sm:text-lg text-[#2F483D] font-normal max-w-lg leading-relaxed pt-1">
@@ -134,7 +162,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <button
                 onClick={onTalkToAI}
-                className="px-7 py-3.5 rounded-xl bg-[#254236] hover:bg-[#1B3329] text-[#EDECE6] font-semibold text-xs sm:text-sm tracking-wider shadow-sm hover:shadow-md transition-all flex items-center gap-2.5 cursor-pointer group"
+                className="px-7 py-3.5 rounded-xl bg-[#162D24] hover:bg-[#0D1C16] text-[#EDECE6] font-semibold text-xs sm:text-sm tracking-wider shadow-sm hover:shadow-lg transition-all duration-200 flex items-center gap-2.5 cursor-pointer group ring-1 ring-white/10"
               >
                 <span>Konsultasi Stylist</span>
                 <ArrowRight className="w-4 h-4 text-[#8EA89D] group-hover:translate-x-0.5 transition-transform" />
@@ -142,33 +170,39 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
               <button
                 onClick={onReference}
-                className="px-7 py-3.5 rounded-xl bg-white hover:bg-[#FAF9F5] text-[#162D24] border border-[#DCDAD2] font-semibold text-xs sm:text-sm tracking-wider shadow-xs hover:shadow-sm transition-all flex items-center gap-2.5 cursor-pointer"
+                className="px-7 py-3.5 rounded-xl bg-[#FAF9F5] hover:bg-white text-[#162D24] border border-[#D5D3CA] font-semibold text-xs sm:text-sm tracking-wider shadow-xs hover:shadow-md transition-all duration-200 flex items-center gap-2.5 cursor-pointer"
               >
                 <Compass className="w-4 h-4 text-[#162D24]" />
                 <span>Katalog Outfit & Thrift</span>
               </button>
             </div>
 
-            {/* Verification Line */}
-            <div className="pt-2 flex flex-wrap items-center gap-4 text-xs text-[#2F483D] font-medium">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#52B788]" />
+            {/* Verification Line with Micro-Icons */}
+            <div className="pt-2 flex flex-wrap items-center gap-3 sm:gap-4 text-xs text-[#2F483D] font-medium">
+              <div className="flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#52B788]" />
                 <span>Panduan Ukuran (cm)</span>
               </div>
-              <span>•</span>
-              <div>Kurasi Produk UMKM & Thrift Komunitas</div>
-              <span>•</span>
-              <div>Transparansi Ukuran Sentimeter</div>
+              <span className="text-[#8EA89D]">•</span>
+              <div className="flex items-center gap-1.5">
+                <HeartHandshake className="w-3.5 h-3.5 text-[#2F4F42]" />
+                <span>Kurasi UMKM & Thrift</span>
+              </div>
+              <span className="text-[#8EA89D]">•</span>
+              <div className="flex items-center gap-1.5">
+                <Palette className="w-3.5 h-3.5 text-[#E58B94]" />
+                <span>Harmoni Rona Kulit</span>
+              </div>
             </div>
           </div>
 
-          {/* Right Column: Layered Geometric Arches + DYNAMIC ROTATING HD FASHION MODEL */}
+          {/* Right Column: Layered Geometric Arches + DYNAMIC ROTATING HD MODEL + FLOATING SPEC PILL */}
           <div 
             className="lg:col-span-5 relative flex flex-col items-center justify-center"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
           >
-            <div className="relative w-full max-w-[320px] sm:max-w-[420px] h-[430px] sm:h-[560px] flex items-end justify-center mx-auto">
+            <div className="relative w-full max-w-[320px] sm:max-w-[420px] h-[440px] sm:h-[570px] flex items-end justify-center mx-auto">
               {/* Left Pink / Coral Arch */}
               <div 
                 className="absolute left-1 sm:left-2 bottom-0 w-[210px] sm:w-[280px] h-[360px] sm:h-[480px] rounded-t-full bg-[#E58B94] shadow-md transition-all duration-700"
@@ -181,17 +215,44 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 style={{ borderTopLeftRadius: '9999px', borderTopRightRadius: '9999px' }}
               />
 
+              {/* Floating Spec Pill (Atelier Spec Card) */}
+              <div className="absolute -top-2 -left-2 sm:-left-6 z-30 pointer-events-none">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={`spec-${currentModel.id}`}
+                    initial={{ opacity: 0, y: -8, scale: 0.94 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 6, scale: 0.94 }}
+                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                    className="bg-[#FAF9F5]/90 backdrop-blur-md border border-[#8EA89D]/40 rounded-2xl p-2.5 sm:p-3 shadow-lg text-left max-w-[180px] sm:max-w-[210px]"
+                  >
+                    <div className="flex items-center gap-1.5 pb-1 border-b border-[#162D24]/10 mb-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#52B788]" />
+                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#2F4F42]">
+                        Spesifikasi Kurasi
+                      </span>
+                    </div>
+                    <p className="text-[10px] sm:text-[11px] font-bold text-[#162D24] truncate">
+                      {currentModel.material}
+                    </p>
+                    <div className="flex items-center justify-between text-[9px] text-[#2F483D] pt-0.5">
+                      <span className="truncate">{currentModel.silhouette}</span>
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+
               {/* Crystal-Clear HD Fashion Model with Arched Mask & Crossfade Animation */}
               <div 
-                className="relative z-10 w-[210px] sm:w-[280px] h-[350px] sm:h-[470px] overflow-hidden shadow-2xl transition-all duration-500"
+                className="relative z-10 w-[210px] sm:w-[280px] h-[360px] sm:h-[480px] overflow-hidden shadow-2xl transition-all duration-500 border border-white/20"
                 style={{ borderTopLeftRadius: '9999px', borderTopRightRadius: '9999px' }}
               >
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentModel.id}
-                    initial={{ opacity: 0, scale: 1.06, y: 15 }}
+                    initial={{ opacity: 0, scale: 1.05, y: 12 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.96, y: -10 }}
+                    exit={{ opacity: 0, scale: 0.96, y: -8 }}
                     transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
                     className="w-full h-full relative"
                   >
@@ -200,15 +261,21 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                       alt={currentModel.styleName}
                       className="w-full h-full object-cover object-top filter brightness-[1.02] contrast-[1.03]"
                     />
-                    {/* Bottom gradient overlay for seamless blending */}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/60 via-black/20 to-transparent flex flex-col justify-end p-4 text-white">
-                      <span className="text-[10px] uppercase font-bold tracking-widest text-[#8EA89D]">
-                        {currentModel.category}
-                      </span>
-                      <h4 className="text-xs font-extrabold truncate">
+                    {/* Bottom gradient overlay with Atelier aesthetic */}
+                    <div className="absolute inset-x-0 bottom-0 h-28 bg-linear-to-t from-black/75 via-black/35 to-transparent flex flex-col justify-end p-4 text-white">
+                      <div className="inline-flex items-center gap-1.5">
+                        <span className="text-[9px] uppercase font-bold tracking-widest text-[#8EA89D]">
+                          {currentModel.category}
+                        </span>
+                        <span className="text-white/40">•</span>
+                        <span className="text-[9px] text-neutral-300 font-medium">
+                          {currentModel.toneMatch}
+                        </span>
+                      </div>
+                      <h4 className="text-xs sm:text-sm font-bold font-serif truncate text-white">
                         {currentModel.styleName}
                       </h4>
-                      <p className="text-[9px] text-neutral-300 truncate">
+                      <p className="text-[9px] sm:text-[10px] text-neutral-300 truncate">
                         {currentModel.brandOrigin}
                       </p>
                     </div>
@@ -219,17 +286,17 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
 
             {/* Interactive Model Switcher Carousel Dots & Style Pills */}
-            <div className="flex items-center gap-1.5 pt-4 z-20">
+            <div className="flex items-center gap-2 pt-4 z-20">
               {heroModels.map((m, idx) => (
                 <button
                   key={m.id}
                   onClick={() => setCurrentModelIndex(idx)}
                   className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
                     idx === currentModelIndex
-                      ? 'w-6 bg-[#2F4F42]'
-                      : 'w-2 bg-neutral-400/50 hover:bg-neutral-600'
+                      ? 'w-7 bg-[#162D24]'
+                      : 'w-2 bg-[#162D24]/20 hover:bg-[#162D24]/50'
                   }`}
-                  title={m.styleName}
+                  title={`${m.styleName} (${m.category})`}
                 />
               ))}
             </div>
