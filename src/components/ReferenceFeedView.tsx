@@ -665,7 +665,7 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
             {filteredProducts.map((product) => {
               const isSaved = savedPostIds.includes(product.id);
               const isLiked = likedProductIds.includes(product.id);
@@ -735,47 +735,47 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
                   </div>
 
                   {/* Card Content Details */}
-                  <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                    <div className="space-y-1.5">
+                  <div className="p-2.5 sm:p-4 space-y-2 sm:space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="space-y-1 sm:space-y-1.5">
                       {/* Seller Account Link (Opens IG-style Store Profile Story) */}
-                      <div className="flex items-center justify-between text-[11px]">
+                      <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
                         <button
                           type="button"
                           onClick={(e) => handleOpenStoreProfile(product.sellerName, e)}
-                          className="truncate max-w-[150px] font-bold text-neutral-800 hover:text-[#2D5A47] hover:underline flex items-center gap-1 cursor-pointer"
+                          className="truncate max-w-[110px] sm:max-w-[150px] font-bold text-neutral-800 hover:text-[#2D5A47] hover:underline flex items-center gap-1 cursor-pointer"
                           title="Lihat Profil & Cerita UMKM Toko Ini"
                         >
-                          <Store className="w-3.5 h-3.5 text-[#2D5A47] shrink-0" />
+                          <Store className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[#2D5A47] shrink-0" />
                           <span className="truncate">{product.sellerName}</span>
                         </button>
 
-                        <span className="text-[10px] text-neutral-400">
+                        <span className="text-[9px] sm:text-[10px] text-neutral-400">
                           {product.sellerCity}
                         </span>
                       </div>
 
                       <h3
                         onClick={() => onSelectProduct(product)}
-                        className="font-serif font-bold text-sm text-[#162D24] line-clamp-1 hover:text-[#2F4F42] cursor-pointer"
+                        className="font-serif font-bold text-xs sm:text-sm text-[#162D24] line-clamp-1 hover:text-[#2F4F42] cursor-pointer"
                         title={product.title}
                       >
                         {product.title}
                       </h3>
 
                       {/* Price and condition */}
-                      <div className="flex items-baseline justify-between pt-0.5">
-                        <div className="flex items-baseline gap-2">
-                          <span className="font-serif font-bold text-base text-[#162D24]">
+                      <div className="flex flex-wrap items-baseline justify-between gap-1 pt-0.5">
+                        <div className="flex items-baseline gap-1.5 sm:gap-2">
+                          <span className="font-serif font-bold text-xs sm:text-base text-[#162D24]">
                             Rp {product.price.toLocaleString('id-ID')}
                           </span>
                           {product.originalPrice && (
-                            <span className="text-[10px] text-neutral-400 line-through">
+                            <span className="text-[9px] sm:text-[10px] text-neutral-400 line-through">
                               Rp {product.originalPrice.toLocaleString('id-ID')}
                             </span>
                           )}
                         </div>
 
-                        <span className="text-[10px] font-medium text-[#2F4F42] bg-[#EAF2EE] px-2 py-0.5 rounded">
+                        <span className="text-[9px] sm:text-[10px] font-medium text-[#2F4F42] bg-[#EAF2EE] px-1.5 py-0.5 rounded">
                           {product.condition === 'new' ? 'Baru' : 'Preloved'}
                         </span>
                       </div>

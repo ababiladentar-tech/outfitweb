@@ -20,6 +20,7 @@ import { CheckoutModal } from '@/components/CheckoutModal';
 import { ReportListingModal } from '@/components/ReportListingModal';
 import { CreatePostModal } from '@/components/CreatePostModal';
 import { HelpModal } from '@/components/HelpModal';
+import { BottomNavBar } from '@/components/BottomNavBar';
 import { ToastContainer, ToastMessage } from '@/components/Toast';
 import { getStoredProducts } from '@/data/marketplace-store';
 
@@ -176,7 +177,7 @@ export default function Home() {
       />
 
       {/* Main View Router */}
-      <main className="flex-1 flex flex-col">
+      <main className="flex-1 flex flex-col pb-16 md:pb-0">
         {currentView === 'home' && (
           <HeroSection
             onTalkToAI={handleTalkToAI}
@@ -380,6 +381,13 @@ export default function Home() {
         isOpen={isHelpOpen}
         onClose={() => setIsHelpOpen(false)}
         onStartOnboarding={() => setIsOnboardingOpen(true)}
+      />
+
+      {/* Mobile Bottom Navigation Bar */}
+      <BottomNavBar
+        currentView={currentView}
+        onNavigate={(view) => setCurrentView(view)}
+        savedCount={savedPostIds.length}
       />
 
       {/* Toast Notification Container */}

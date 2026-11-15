@@ -403,8 +403,8 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
 
   return (
     <div className="flex h-[calc(100vh-80px)] w-full bg-[#F7F6F2] overflow-hidden relative">
-      {/* 1. Slim Left Icon Sidebar */}
-      <aside className="w-14 sm:w-16 bg-[#8EA89D] flex flex-col items-center justify-between py-6 text-[#162D24] shadow-md z-20 shrink-0 select-none">
+      {/* 1. Slim Left Icon Sidebar (Desktop Only, Hidden on Mobile for Full Width) */}
+      <aside className="hidden md:flex w-14 sm:w-16 bg-[#8EA89D] flex-col items-center justify-between py-6 text-[#162D24] shadow-md z-20 shrink-0 select-none">
         <div className="flex flex-col items-center gap-6">
           {/* Home Icon */}
           <button 
@@ -708,8 +708,8 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
           </div>
         </div>
 
-        {/* 3. Floating Bottom Input Bar */}
-        <div className="bg-gradient-to-t from-[#F7F6F2] via-[#F7F6F2] to-transparent pt-2 pb-5 px-4 sm:px-6 shrink-0">
+        {/* 3. Floating Bottom Input Bar (Clean & Focused, with mobile bottom padding) */}
+        <div className="bg-gradient-to-t from-[#F7F6F2] via-[#F7F6F2] to-transparent pt-2 pb-20 md:pb-5 px-3 sm:px-6 shrink-0">
           <div className="max-w-3xl mx-auto space-y-2">
             {/* Limit Warning Notice if Quota Expired */}
             {remainingQuota <= 0 && (

@@ -168,22 +168,22 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
           >
-            <div className="relative w-[340px] sm:w-[420px] h-[480px] sm:h-[560px] flex items-end justify-center">
+            <div className="relative w-full max-w-[320px] sm:max-w-[420px] h-[430px] sm:h-[560px] flex items-end justify-center mx-auto">
               {/* Left Pink / Coral Arch */}
               <div 
-                className="absolute left-2 bottom-0 w-[240px] sm:w-[280px] h-[400px] sm:h-[480px] rounded-t-full bg-[#E58B94] shadow-md transition-all duration-700"
+                className="absolute left-1 sm:left-2 bottom-0 w-[210px] sm:w-[280px] h-[360px] sm:h-[480px] rounded-t-full bg-[#E58B94] shadow-md transition-all duration-700"
                 style={{ borderTopLeftRadius: '9999px', borderTopRightRadius: '9999px' }}
               />
 
               {/* Right Dark Green Arch */}
               <div 
-                className="absolute right-2 bottom-0 w-[180px] sm:w-[220px] h-[320px] sm:h-[400px] rounded-t-full bg-[#2F4F42] shadow-md transition-all duration-700"
+                className="absolute right-1 sm:right-2 bottom-0 w-[160px] sm:w-[220px] h-[290px] sm:h-[400px] rounded-t-full bg-[#2F4F42] shadow-md transition-all duration-700"
                 style={{ borderTopLeftRadius: '9999px', borderTopRightRadius: '9999px' }}
               />
 
               {/* Crystal-Clear HD Fashion Model with Arched Mask & Crossfade Animation */}
               <div 
-                className="relative z-10 w-[240px] sm:w-[280px] h-[390px] sm:h-[470px] overflow-hidden shadow-2xl transition-all duration-500"
+                className="relative z-10 w-[210px] sm:w-[280px] h-[350px] sm:h-[470px] overflow-hidden shadow-2xl transition-all duration-500"
                 style={{ borderTopLeftRadius: '9999px', borderTopRightRadius: '9999px' }}
               >
                 <AnimatePresence mode="wait">

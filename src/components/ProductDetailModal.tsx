@@ -101,7 +101,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const currentCondition = conditionLabels[product.condition] || conditionLabels.new;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#EFEFEA]/95 backdrop-blur-xs p-4 sm:p-6 lg:p-10 flex flex-col justify-between animate-fadeIn">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#EFEFEA]/95 backdrop-blur-xs p-3 sm:p-6 lg:p-10 flex flex-col justify-between animate-fadeIn pb-24 sm:pb-8">
       <div className="max-w-7xl mx-auto w-full space-y-6">
         {/* Top Back Navigation */}
         <div className="flex items-center justify-between">
@@ -456,30 +456,30 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               <p>{product.description}</p>
             </div>
 
-            {/* Primary Action Buttons */}
-            <div className="pt-2 flex flex-col sm:flex-row gap-3">
+            {/* Primary Action Buttons (Sticky on mobile for instant thumb purchase, inline on desktop) */}
+            <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-[#DCDAD2] shadow-2xl z-40 flex flex-row gap-2 sm:static sm:p-0 sm:bg-transparent sm:border-none sm:shadow-none sm:z-auto sm:pt-2">
               {product.externalLink ? (
                 <>
                   <button
                     onClick={handleOpenExternalShop}
-                    className="flex-1 py-4 px-6 rounded-2xl bg-[#162D24] hover:bg-[#203D31] text-white font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer"
+                    className="flex-1 py-3.5 sm:py-4 px-3 sm:px-6 rounded-2xl bg-[#162D24] hover:bg-[#203D31] text-white font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer truncate"
                   >
-                    <ExternalLink className="w-4 h-4 text-[#8EA89D]" />
-                    <span>Beli di Toko / Shopee / Tokped</span>
+                    <ExternalLink className="w-4 h-4 text-[#8EA89D] shrink-0" />
+                    <span className="truncate">Beli di Toko / Shopee</span>
                   </button>
 
                   <button
                     onClick={handleVisitSite}
-                    className="py-4 px-6 rounded-2xl bg-[#FAF9F5] hover:bg-[#EFECE6] border border-[#162D24] text-[#162D24] font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
+                    className="py-3.5 sm:py-4 px-3 sm:px-6 rounded-2xl bg-[#FAF9F5] hover:bg-[#EFECE6] border border-[#162D24] text-[#162D24] font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
                   >
                     <MessageCircle className="w-4 h-4 text-[#2D5A47]" />
-                    <span>Chat WhatsApp</span>
+                    <span>WhatsApp</span>
                   </button>
                 </>
               ) : (
                 <button
                   onClick={handleVisitSite}
-                  className="flex-1 py-4 px-6 rounded-2xl bg-[#162D24] hover:bg-[#203D31] text-white font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer"
+                  className="flex-1 py-3.5 sm:py-4 px-4 sm:px-6 rounded-2xl bg-[#162D24] hover:bg-[#203D31] text-white font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
                 >
                   <MessageCircle className="w-4 h-4 text-[#8EA89D]" />
                   <span>Pesan Sekarang via WhatsApp</span>
