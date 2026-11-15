@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { 
   Menu, 
   HelpCircle, 
-  Heart, 
+  BookmarkCheck,
+  Bell,
   User, 
   Sparkles, 
   Compass, 
@@ -13,7 +14,9 @@ import {
   Package,
   Store,
   Shirt,
-  Layers
+  Layers,
+  Check,
+  ChevronRight
 } from 'lucide-react';
 import { ActiveAppView } from '@/types';
 
@@ -37,6 +40,39 @@ export const Header: React.FC<HeaderProps> = ({
   savedCount
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [notifications, setNotifications] = useState([
+    {
+      id: 'n1',
+      title: 'Diskon Spesial Mitra UMKM',
+      message: 'Atelier Senja memberikan potongan 20% untuk koleksi linen baru!',
+      time: '10m lalu',
+      read: false,
+      tag: 'Promo'
+    },
+    {
+      id: 'n2',
+      title: 'Koleksi Baru Ditambahkan',
+      message: 'Batik Modern Solo baru saja merilis kemeja etnik sawo matang.',
+      time: '1 jam lalu',
+      read: false,
+      tag: 'Mitra'
+    },
+    {
+      id: 'n3',
+      title: 'Inspirasi Gaya Sawo Matang',
+      message: 'Stylist telah menyusun 3 ide outfit kasual yang cocok dengan undertone-mu.',
+      time: '3 jam lalu',
+      read: true,
+      tag: 'Stylist'
+    }
+  ]);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const markAllRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[#162D24] text-white border-b border-[#254236] shadow-sm">
@@ -107,29 +143,107 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
         </nav>
 
-        {/* Right: Saved Items, Help & Auth */}
-        <div className="flex items-center gap-2.5 sm:gap-4 text-xs font-semibold">
-          {/* Saved Items Button */}
+        {/* Right: Saved Items, Notifications, Help & Auth */}
+        <div className="flex items-center gap-2 sm:gap-3 text-xs font-semibold relative">
+          {/* Saved Items Button (Fashion Bookmark Icon) */}
           <button
             onClick={() => onNavigate('saved')}
-            className={`relative p-2 rounded-xl transition-colors cursor-pointer ${
-              currentView === 'saved' ? 'bg-[#244237] text-white' : 'hover:bg-white/10 text-neutral-200'
+            className={`relative p-2 rounded-xl transition-all cursor-pointer flex items-center gap-1.5 ${
+              currentView === 'saved' ? 'bg-[#244237] text-white shadow-xs' : 'hover:bg-white/10 text-neutral-200'
             }`}
-            title="Saved Outfits"
+            title="Outfit Tersimpan (Saved Outfits)"
           >
-            <Heart className={`w-5 h-5 ${savedCount > 0 ? 'fill-[#E58B94] text-[#E58B94]' : ''}`} />
+            <BookmarkCheck className={`w-5 h-5 ${savedCount > 0 ? 'text-[#8EA89D]' : 'text-neutral-300'}`} />
             {savedCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#E58B94] text-[#162D24] text-[9px] font-black rounded-full flex items-center justify-center shadow-xs">
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-[#8EA89D] text-[#162D24] text-[9px] font-black rounded-full flex items-center justify-center shadow-xs">
                 {savedCount}
               </span>
             )}
           </button>
 
+          {/* Notifications Button */}
+          <div className="relative">
+            <button
+              onClick={() => setNotificationsOpen(!notificationsOpen)}
+              className="relative p-2 rounded-xl hover:bg-white/10 text-neutral-200 transition-colors cursor-pointer"
+              title="Notifikasi"
+            >
+              <Bell className="w-5 h-5 text-neutral-200" />
+              {unreadCount > 0 && (
+                <span className="absolute 1.5 top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full ring-2 ring-[#162D24] animate-pulse" />
+              )}
+            </button>
+
+            {/* Notifications Dropdown Panel */}
+            {notificationsOpen && (
+              <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white text-[#162D24] rounded-2xl shadow-2xl border border-[#D8D2C4] overflow-hidden z-50 animate-fadeIn text-left">
+                <div className="p-3.5 bg-[#FAF9F5] border-b border-[#E8E4D9] flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-serif font-bold text-xs text-[#162D24]">Notifikasi</span>
+                    {unreadCount > 0 && (
+                      <span className="px-2 py-0.5 rounded-full bg-[#162D24] text-white text-[10px] font-bold">
+                        {unreadCount} baru
+                      </span>
+                    )}
+                  </div>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllRead}
+                      className="text-[10px] font-bold text-[#2D5A47] hover:underline cursor-pointer"
+                    >
+                      Tandai Sudah Dibaca
+                    </button>
+                  )}
+                </div>
+
+                <div className="divide-y divide-neutral-100 max-h-80 overflow-y-auto">
+                  {notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      onClick={() => {
+                        setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, read: true } : item));
+                        setNotificationsOpen(false);
+                        onNavigate('reference');
+                      }}
+                      className={`p-3.5 hover:bg-[#FAF9F5] transition-colors cursor-pointer ${
+                        !n.read ? 'bg-[#EAF2EE]/50 font-semibold' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-neutral-100 text-neutral-600">
+                          {n.tag}
+                        </span>
+                        <span className="text-[10px] text-neutral-400 font-normal">{n.time}</span>
+                      </div>
+                      <h4 className="text-xs font-bold text-[#162D24] leading-tight mb-0.5">{n.title}</h4>
+                      <p className="text-[11px] text-neutral-600 font-normal leading-relaxed line-clamp-2">
+                        {n.message}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="p-2.5 bg-[#FAF9F5] border-t border-[#E8E4D9] text-center">
+                  <button
+                    onClick={() => {
+                      setNotificationsOpen(false);
+                      onNavigate('reference');
+                    }}
+                    className="text-[11px] font-bold text-[#2D5A47] hover:underline cursor-pointer flex items-center justify-center gap-1 mx-auto"
+                  >
+                    <span>Lihat Promo & Update Terbaru</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Help Button */}
           <button 
             onClick={onOpenHelp}
             className="hidden sm:flex items-center gap-1.5 text-neutral-300 hover:text-white transition-colors uppercase tracking-wider px-2 py-1"
-            title="Bantuan & Panduan"
+            title="Bantuan, FAQ & CS AI"
           >
             <HelpCircle className="w-4 h-4 text-[#8EA89D]" />
             <span className="text-[11px]">BANTUAN</span>
@@ -198,7 +312,7 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <Compass className="w-4 h-4 text-[#8EA89D]" />
-            <span>Marketplace & Katalog</span>
+            <span>Marketplace & Komunitas</span>
           </button>
 
           <button
@@ -224,14 +338,25 @@ export const Header: React.FC<HeaderProps> = ({
             }`}
           >
             <div className="flex items-center gap-2">
-              <Heart className="w-4 h-4 text-[#E58B94]" />
-              <span>Saved Outfits</span>
+              <BookmarkCheck className="w-4 h-4 text-[#8EA89D]" />
+              <span>Outfit Tersimpan</span>
             </div>
             {savedCount > 0 && (
-              <span className="px-2 py-0.5 rounded-full bg-[#E58B94] text-[#162D24] text-xs font-bold">
+              <span className="px-2 py-0.5 rounded-full bg-[#8EA89D] text-[#162D24] text-xs font-bold">
                 {savedCount}
               </span>
             )}
+          </button>
+
+          <button
+            onClick={() => {
+              onOpenHelp();
+              setMobileMenuOpen(false);
+            }}
+            className="w-full text-left py-2 px-3 rounded-xl transition-colors flex items-center gap-2 text-neutral-300"
+          >
+            <HelpCircle className="w-4 h-4 text-[#8EA89D]" />
+            <span>Bantuan, FAQ & CS AI</span>
           </button>
         </div>
       )}

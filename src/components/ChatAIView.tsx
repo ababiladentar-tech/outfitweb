@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { UserOnboardingProfile, ChatMessage, UMKMProductPost, WardrobeItem } from '@/types';
+import { UserOnboardingProfile, ChatMessage, UMKMProductPost, WardrobeItem, ChatSession } from '@/types';
 import { INITIAL_MARKETPLACE_PRODUCTS } from '@/data/umkm-products';
 import { getStoredWardrobe } from '@/data/wardrobe-store';
 import { 
@@ -15,7 +15,16 @@ import {
   User, 
   Share2, 
   Shirt, 
-  ChevronDown
+  ChevronDown,
+  History,
+  Image as ImageIcon,
+  X,
+  Trash2,
+  Clock,
+  ExternalLink,
+  Zap,
+  Crown,
+  AlertCircle
 } from 'lucide-react';
 
 interface ChatAIViewProps {
@@ -32,11 +41,13 @@ interface ChatAIViewProps {
   onShowToast?: (text: string) => void;
 }
 
+const CHAT_SESSIONS_STORAGE_KEY = 'outfitly_chat_sessions_v2';
+const DAILY_LIMIT = 10;
+
 // Clean markdown formatter
 function formatStylistText(text: string) {
   const parts = text.split('\n');
   return parts.map((line, lineIdx) => {
-    // Process bold text **example**
     const formattedLine = line.split(/(\*\*.*?\*\*)/g).map((chunk, chunkIdx) => {
       if (chunk.startsWith('**') && chunk.endsWith('**')) {
         return <strong key={chunkIdx} className="font-bold text-[#162D24]">{chunk.slice(2, -2)}</strong>;
@@ -73,8 +84,40 @@ export const ChatAIView: React.FC<ChatAIViewProps> = ({
 }) => {
   const [wardrobeDropdownOpen, setWardrobeDropdownOpen] = useState(false);
   const [wardrobeList, setWardrobeList] = useState<WardrobeItem[]>([]);
+  
+  // AI Mode: 'stylist_pro' (analisis menyeluruh) vs 'link_only' (mode biasa hanya kirim link-link)
+  const [aiMode, setAiMode] = useState<'stylist_pro' | 'link_only'>('stylist_pro');
+
+  // Image Upload State
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Daily Quota Limit
+  const getTodayKey = () => `outfitly_ai_usage_${new Date().toISOString().slice(0, 10)}`;
+  const [usageCount, setUsageCount] = useState<number>(0);
+
+  // Chat History & Session Management
+  const [sessionId, setSessionId] = useState<string>(() => `session-${Date.now()}`);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [savedSessions, setSavedSessions] = useState<ChatSession[]>([]);
 
   useEffect(() => {
+    // Load daily usage
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(getTodayKey());
+        setUsageCount(stored ? parseInt(stored, 10) : 0);
+      } catch (e) {}
+
+      // Load past sessions
+      try {
+        const rawSessions = localStorage.getItem(CHAT_SESSIONS_STORAGE_KEY);
+        if (rawSessions) {
+          setSavedSessions(JSON.parse(rawSessions));
+        }
+      } catch (e) {}
+    }
+
     const updateWardrobe = () => {
       setWardrobeList(getStoredWardrobe());
     };
@@ -82,6 +125,28 @@ export const ChatAIView: React.FC<ChatAIViewProps> = ({
     window.addEventListener('outfitly_wardrobe_updated', updateWardrobe);
     return () => window.removeEventListener('outfitly_wardrobe_updated', updateWardrobe);
   }, []);
+
+  const remainingQuota = Math.max(0, DAILY_LIMIT - usageCount);
+
+  const incrementUsage = () => {
+    const updated = usageCount + 1;
+    setUsageCount(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(getTodayKey(), updated.toString());
+      } catch (e) {}
+    }
+  };
+
+  const resetUsageDemo = () => {
+    setUsageCount(0);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(getTodayKey(), '0');
+      } catch (e) {}
+    }
+    if (onShowToast) onShowToast('Kuota harian AI berhasil direset.');
+  };
 
   const displayName = username || userProfile?.username || 'Teman Gaya';
   const initialWelcomeText = `Halo ${displayName}! Selamat datang di Outfitly Stylist.
@@ -91,7 +156,7 @@ Aku siap membantumu menemukan inspirasi outfit yang cocok dengan karakteristik f
 • **Body Shape:** ${userProfile?.bodyShape ? userProfile.bodyShape.toUpperCase().replace('_', ' ') : 'Hourglass'}
 • **Panduan Ukuran (cm):** ${userProfile?.measurements?.chestBustCm ? `Lingkar Dada ${userProfile.measurements.chestBustCm}cm, Pinggang ${userProfile.measurements.waistCm}cm` : 'Bisa diisi di profil untuk akurasi sentimeter'}
 
-Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & preloved sesuai budget, atau panduan ukuran yang pas!`;
+Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & preloved sesuai budget, atau mengunggah foto pakaian untuk dicocokkan!`;
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -112,7 +177,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isTyping, streamedText]);
 
-  // If user navigated with initial wardrobe items (e.g. from Profile Lemari)
+  // Handle Initial Wardrobe Item navigation
   useEffect(() => {
     if (initialWardrobeItems && initialWardrobeItems.length > 0) {
       const itemsStr = initialWardrobeItems.map(i => `${i.name} (${i.color})`).join(', ');
@@ -121,11 +186,108 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
   }, []);
 
   const quickChips = [
-    '👗 Padukan baju di lemariku dengan UMKM',
+    '👗 Padukan baju lemariku dengan produk UMKM',
     '✨ Outfit kasual minimalis di bawah Rp250.000',
     '📏 Rekomendasi outer yang pas lingkar dada',
     '🎨 Padu padan warna earth tone sawo matang'
   ];
+
+  // Helper to persist current session to storage
+  const saveSessionToStorage = (currentMsgs: ChatMessage[]) => {
+    if (currentMsgs.length <= 1) return;
+    const userMsg = currentMsgs.find(m => m.sender === 'user');
+    const title = userMsg ? userMsg.text.slice(0, 32) + (userMsg.text.length > 32 ? '...' : '') : 'Konsultasi Outfit';
+
+    const newSession: ChatSession = {
+      id: sessionId,
+      title,
+      createdAt: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+      messages: currentMsgs
+    };
+
+    setSavedSessions(prev => {
+      const filtered = prev.filter(s => s.id !== sessionId);
+      const updated = [newSession, ...filtered];
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(updated));
+        } catch (e) {}
+      }
+      return updated;
+    });
+  };
+
+  // Start New Chat (Save previous & Reset)
+  const handleStartNewChat = () => {
+    if (messages.length > 1) {
+      saveSessionToStorage(messages);
+    }
+    const newId = `session-${Date.now()}`;
+    setSessionId(newId);
+    setAttachedImage(null);
+    setMessages([
+      {
+        id: `welcome-${Date.now()}`,
+        sender: 'ai',
+        text: initialWelcomeText,
+        timestamp: 'Baru saja',
+        recommendedProducts: INITIAL_MARKETPLACE_PRODUCTS.slice(0, 2)
+      }
+    ]);
+    if (onShowToast) {
+      onShowToast('Percakapan baru dimulai. Sesi sebelumnya tersimpan di Riwayat.');
+    }
+  };
+
+  // Open Past Session from History
+  const handleOpenPastSession = (session: ChatSession) => {
+    // save current before switching
+    if (messages.length > 1) {
+      saveSessionToStorage(messages);
+    }
+    setSessionId(session.id);
+    setMessages(session.messages);
+    setIsHistoryOpen(false);
+    if (onShowToast) {
+      onShowToast(`Membuka sesi: "${session.title}"`);
+    }
+  };
+
+  // Delete Past Session
+  const handleDeleteSession = (sessIdToDelete: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = savedSessions.filter(s => s.id !== sessIdToDelete);
+    setSavedSessions(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(CHAT_SESSIONS_STORAGE_KEY, JSON.stringify(updated));
+      } catch (err) {}
+    }
+    if (onShowToast) {
+      onShowToast('Sesi riwayat percakapan dihapus.');
+    }
+  };
+
+  // File Image Attachment Handler
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 4 * 1024 * 1024) {
+      if (onShowToast) onShowToast('Ukuran foto maksimal 4MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setAttachedImage(base64);
+      if (onShowToast) onShowToast('Foto berhasil dilampirkan ke pesan!');
+    };
+    reader.readAsDataURL(file);
+    // Reset file input
+    e.target.value = '';
+  };
 
   // Typewriter streaming effect
   const typeTextStream = (fullText: string, products: UMKMProductPost[]) => {
@@ -141,16 +303,20 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
         clearInterval(timer);
         setIsTyping(false);
         setStreamedText('');
-        setMessages(prev => [
-          ...prev,
-          {
-            id: Date.now().toString(),
-            sender: 'ai',
-            text: fullText,
-            timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
-            recommendedProducts: products
-          }
-        ]);
+        setMessages(prev => {
+          const updated = [
+            ...prev,
+            {
+              id: Date.now().toString(),
+              sender: 'ai' as const,
+              text: fullText,
+              timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+              recommendedProducts: products
+            }
+          ];
+          saveSessionToStorage(updated);
+          return updated;
+        });
       } else {
         setStreamedText(fullText.slice(0, currentIndex));
       }
@@ -159,25 +325,40 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
 
   const handleSend = async (textToSend?: string) => {
     const text = textToSend || inputValue;
-    if (!text.trim() || isTyping) return;
+    if ((!text.trim() && !attachedImage) || isTyping) return;
+
+    if (remainingQuota <= 0) {
+      if (onShowToast) {
+        onShowToast('Batas kuota harian konsultasi tercapai. Anda dapat mereset kuota demo.');
+      }
+      return;
+    }
+
+    const currentImg = attachedImage;
+    setAttachedImage(null);
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       sender: 'user',
-      text: text.trim(),
+      text: text.trim() || 'Tolong analisis dan carikan paduan outfit yang cocok untuk foto pakaian ini.',
+      imageUrl: currentImg || undefined,
       timestamp: new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
     };
 
-    setMessages(prev => [...prev, userMsg]);
+    const updatedMessages = [...messages, userMsg];
+    setMessages(updatedMessages);
     setInputValue('');
     setIsTyping(true);
+    incrementUsage();
 
     try {
       const res = await fetch('/api/ai-stylist-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          message: text,
+          message: userMsg.text,
+          imageUrl: currentImg || undefined,
+          aiMode,
           history: messages.map(m => ({ sender: m.sender, text: m.text })),
           wardrobeItems: getStoredWardrobe(),
           profile: {
@@ -204,7 +385,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
 
   const handleExportLookbook = () => {
     const chatTranscript = messages
-      .map(m => `[${m.sender === 'ai' ? 'Outfitly AI Stylist' : 'User'}] (${m.timestamp}):\n${m.text}\n`)
+      .map(m => `[${m.sender === 'ai' ? 'Outfitly Stylist' : 'User'}] (${m.timestamp}):\n${m.text}\n`)
       .join('\n----------------------------------------\n\n');
     
     const blob = new Blob([chatTranscript], { type: 'text/plain;charset=utf-8' });
@@ -221,7 +402,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
   };
 
   return (
-    <div className="flex h-[calc(100vh-80px)] w-full bg-[#F7F6F2] overflow-hidden">
+    <div className="flex h-[calc(100vh-80px)] w-full bg-[#F7F6F2] overflow-hidden relative">
       {/* 1. Slim Left Icon Sidebar */}
       <aside className="w-14 sm:w-16 bg-[#8EA89D] flex flex-col items-center justify-between py-6 text-[#162D24] shadow-md z-20 shrink-0 select-none">
         <div className="flex flex-col items-center gap-6">
@@ -234,26 +415,32 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
             <Home className="w-5 h-5 text-[#162D24]" />
           </button>
 
-          {/* New Chat Icon */}
+          {/* New Chat Button */}
           <button 
-            onClick={() => setMessages([{
-              id: 'welcome-reset',
-              sender: 'ai',
-              text: initialWelcomeText,
-              timestamp: 'Baru saja',
-              recommendedProducts: INITIAL_MARKETPLACE_PRODUCTS.slice(0, 2)
-            }])}
-            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-95 cursor-pointer" 
-            title="Percakapan Baru"
+            onClick={handleStartNewChat}
+            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-95 cursor-pointer bg-white/10" 
+            title="Mulai Chat Baru"
           >
             <MessageSquarePlus className="w-5 h-5 text-[#162D24]" />
+          </button>
+
+          {/* Chat History Icon Button */}
+          <button 
+            onClick={() => setIsHistoryOpen(true)}
+            className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-95 cursor-pointer relative" 
+            title="Buka Riwayat Percakapan"
+          >
+            <History className="w-5 h-5 text-[#162D24]" />
+            {savedSessions.length > 0 && (
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#162D24]" />
+            )}
           </button>
 
           {/* Marketplace Icon */}
           <button 
             onClick={onNavigateReference}
             className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-95 cursor-pointer" 
-            title="Marketplace & Community Feed"
+            title="Katalog & Komunitas Feed"
           >
             <Compass className="w-5 h-5 text-[#162D24]" />
           </button>
@@ -262,7 +449,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
           <button 
             onClick={onOpenHelp}
             className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-95 cursor-pointer" 
-            title="Bantuan & Panduan"
+            title="Bantuan & Customer Service AI"
           >
             <HelpCircle className="w-5 h-5 text-[#162D24]" />
           </button>
@@ -292,7 +479,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
       {/* 2. Main Pure AI Chat View */}
       <div className="flex-1 flex flex-col justify-between overflow-hidden relative">
         {/* Top Minimal Header */}
-        <div className="h-14 px-4 sm:px-8 flex items-center justify-between text-[#162D24] select-none border-b border-[#E5E0D5] bg-white shrink-0">
+        <div className="min-h-14 py-2 px-4 sm:px-6 flex flex-wrap items-center justify-between text-[#162D24] select-none border-b border-[#E5E0D5] bg-white shrink-0 gap-3">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-[#162D24] text-white flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 text-[#8EA89D]" />
@@ -305,48 +492,83 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               </div>
               <p className="text-[10px] text-neutral-400">
-                Konsultan Gaya Personal & Panduan Ukuran CM
+                Konsultan Gaya Personal & Rekomendasi Busana Lokal
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Mode AI Switcher: Mode Cepat (Link-Only) vs Stylist Pro */}
+          <div className="flex items-center bg-[#FAF9F5] p-1 rounded-xl border border-[#DDD8CC] text-xs">
             <button
-              onClick={() => setMessages([{
-                id: 'welcome-reset',
-                sender: 'ai',
-                text: initialWelcomeText,
-                timestamp: 'Baru saja',
-                recommendedProducts: INITIAL_MARKETPLACE_PRODUCTS.slice(0, 2)
-              }])}
-              className="px-3 py-1.5 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE8E0] border border-[#DDD8CC] text-xs font-semibold text-[#162D24] transition-colors cursor-pointer"
+              onClick={() => {
+                setAiMode('link_only');
+                if (onShowToast) onShowToast('Mode Cepat (Link-Only) aktif.');
+              }}
+              className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                aiMode === 'link_only'
+                  ? 'bg-[#162D24] text-white shadow-xs'
+                  : 'text-neutral-500 hover:text-[#162D24]'
+              }`}
+            >
+              <Zap className="w-3 h-3 text-amber-400" />
+              <span>Mode Cepat (Link-Only)</span>
+            </button>
+
+            <button
+              onClick={() => {
+                setAiMode('stylist_pro');
+                if (onShowToast) onShowToast('Mode Stylist Pro aktif.');
+              }}
+              className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                aiMode === 'stylist_pro'
+                  ? 'bg-[#162D24] text-white shadow-xs'
+                  : 'text-neutral-500 hover:text-[#162D24]'
+              }`}
+            >
+              <Crown className="w-3 h-3 text-[#8EA89D]" />
+              <span>Stylist Pro</span>
+            </button>
+          </div>
+
+          {/* Right Action Controls: Limit Quota, New Chat, History */}
+          <div className="flex items-center gap-2">
+            {/* Daily Limit Quota Badge */}
+            <div 
+              className={`px-2.5 py-1 rounded-full text-[11px] font-bold border flex items-center gap-1.5 ${
+                remainingQuota > 0
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                  : 'bg-rose-50 text-rose-800 border-rose-300'
+              }`}
+              title="Sisa kuota konsultasi gratis hari ini"
+            >
+              <span>Sisa Kuota: <strong>{remainingQuota}/{DAILY_LIMIT}</strong></span>
+              {remainingQuota === 0 && (
+                <button
+                  onClick={resetUsageDemo}
+                  className="underline text-[10px] text-rose-900 ml-1 cursor-pointer"
+                  title="Reset kuota untuk testing"
+                >
+                  Reset
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={handleStartNewChat}
+              className="px-3 py-1.5 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE8E0] border border-[#DDD8CC] text-xs font-semibold text-[#162D24] transition-colors cursor-pointer flex items-center gap-1.5"
               title="Mulai percakapan baru"
             >
-              Chat Baru
+              <MessageSquarePlus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">+ Chat Baru</span>
             </button>
 
             <button
-              onClick={handleExportLookbook}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE8E0] border border-[#DDD8CC] text-xs font-semibold text-[#162D24] transition-colors cursor-pointer"
-              title="Ekspor Lookbook"
+              onClick={() => setIsHistoryOpen(true)}
+              className="px-3 py-1.5 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE8E0] border border-[#DDD8CC] text-xs font-semibold text-[#162D24] transition-colors cursor-pointer flex items-center gap-1.5"
+              title="Lihat riwayat percakapan"
             >
-              <Download className="w-3.5 h-3.5 text-[#2D5A47]" />
-              <span className="text-[11px]">Ekspor</span>
-            </button>
-
-            <button 
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({ title: 'Outfitly AI Stylist', url: window.location.href });
-                } else {
-                  navigator.clipboard?.writeText(window.location.href);
-                  if (onShowToast) onShowToast('Link percakapan berhasil disalin!');
-                }
-              }}
-              className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-black/5 p-1 cursor-pointer transition-colors"
-              title="Bagikan"
-            >
-              <Share2 className="w-4 h-4 text-[#162D24]" />
+              <History className="w-3.5 h-3.5 text-[#2D5A47]" />
+              <span className="hidden sm:inline">Riwayat</span>
             </button>
 
             <button 
@@ -359,7 +581,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
           </div>
         </div>
 
-        {/* Center Messages Feed (Breathable, Spacious, Clean) */}
+        {/* Center Messages Feed */}
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-6">
           <div className="max-w-3xl mx-auto space-y-6">
             {/* Quick Prompt Chips */}
@@ -379,9 +601,18 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
             {messages.map((msg) => (
               <div key={msg.id} className="space-y-3">
                 {msg.sender === 'user' ? (
-                  /* User Message */
+                  /* User Message Bubble */
                   <div className="flex justify-end animate-fadeIn">
                     <div className="max-w-xl bg-[#1E3A2F] text-white rounded-2xl rounded-tr-xs px-4 py-3 text-xs sm:text-sm shadow-xs leading-relaxed">
+                      {msg.imageUrl && (
+                        <div className="mb-2 overflow-hidden rounded-xl border border-white/20">
+                          <img
+                            src={msg.imageUrl}
+                            alt="Foto Pakaian Pengguna"
+                            className="max-h-48 w-auto object-cover rounded-xl"
+                          />
+                        </div>
+                      )}
                       <p>{msg.text}</p>
                       <span className="block text-[10px] text-neutral-300 text-right mt-1.5">
                         {msg.timestamp}
@@ -389,7 +620,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
                     </div>
                   </div>
                 ) : (
-                  /* AI Message */
+                  /* AI Message Bubble */
                   <div className="flex items-start gap-3 animate-fadeIn">
                     <div className="w-8 h-8 rounded-full bg-[#162D24] text-white flex items-center justify-center shrink-0 mt-1 shadow-xs">
                       <Sparkles className="w-4 h-4 text-[#8EA89D]" />
@@ -403,7 +634,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
                         </span>
                       </div>
 
-                      {/* Product Recommendation Cards (Clean Inline Carousel / Grid) */}
+                      {/* Product Recommendation Cards */}
                       {msg.recommendedProducts && msg.recommendedProducts.length > 0 && (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                           {msg.recommendedProducts.map((p) => (
@@ -421,7 +652,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
                                 <div>
                                   <div className="flex items-center gap-1.5 mb-1">
                                     <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-[#FAF9F5] border border-[#DDD8CC] text-neutral-600 uppercase">
-                                      {p.sellerType === 'community_preloved' ? 'Preloved' : 'UMKM'}
+                                      {p.sellerType === 'community_preloved' ? 'Preloved' : p.sellerType === 'collab_mitra' ? 'Collab Mitra' : 'UMKM'}
                                     </span>
                                     <span className="text-[10px] text-neutral-500 truncate">{p.sellerName}</span>
                                   </div>
@@ -465,7 +696,11 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
             {isTyping && !streamedText && (
               <div className="flex items-center gap-2.5 text-xs text-neutral-500 font-medium pl-11 py-2">
                 <Sparkles className="w-4 h-4 animate-spin text-[#8EA89D]" />
-                <span>Stylist sedang menyiapkan kurasi & panduan ukuran...</span>
+                <span>
+                  {aiMode === 'link_only' 
+                    ? 'Sedang mencari link produk cepat...' 
+                    : 'Stylist sedang meracik kurasi & analisis fitting cm...'}
+                </span>
               </div>
             )}
 
@@ -473,9 +708,42 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
           </div>
         </div>
 
-        {/* 3. Floating Bottom Input Bar (Clean & Focused) */}
-        <div className="bg-gradient-to-t from-[#F7F6F2] via-[#F7F6F2] to-transparent pt-3 pb-5 px-4 sm:px-6 shrink-0">
-          <div className="max-w-3xl mx-auto">
+        {/* 3. Floating Bottom Input Bar */}
+        <div className="bg-gradient-to-t from-[#F7F6F2] via-[#F7F6F2] to-transparent pt-2 pb-5 px-4 sm:px-6 shrink-0">
+          <div className="max-w-3xl mx-auto space-y-2">
+            {/* Limit Warning Notice if Quota Expired */}
+            {remainingQuota <= 0 && (
+              <div className="p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Batas 10 konsultasi gratis hari ini telah tercapai. Kuota akan diperbarui besok.</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={resetUsageDemo}
+                  className="font-bold underline text-xs cursor-pointer ml-2 shrink-0"
+                >
+                  Reset Kuota Demo
+                </button>
+              </div>
+            )}
+
+            {/* Image Preview Chip if attached */}
+            {attachedImage && (
+              <div className="inline-flex items-center gap-2 bg-white px-3 py-1.5 rounded-xl border border-[#DDD8CC] shadow-xs animate-fadeIn">
+                <img src={attachedImage} alt="Preview" className="w-7 h-7 rounded-lg object-cover" />
+                <span className="text-xs text-neutral-600 font-medium">Foto pakaian terlampir</span>
+                <button
+                  type="button"
+                  onClick={() => setAttachedImage(null)}
+                  className="p-1 hover:bg-neutral-100 rounded-full text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                  title="Hapus foto"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -541,18 +809,41 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
                 )}
               </div>
 
+              {/* Image Upload Input Trigger */}
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept="image/*"
+                onChange={handleImageSelect}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 text-neutral-500 hover:text-[#162D24] hover:bg-[#FAF9F5] rounded-xl transition-colors cursor-pointer border border-[#DDD8CC]"
+                title="Unggah Foto Pakaian (Fitur Gambar)"
+              >
+                <ImageIcon className="w-4 h-4" />
+              </button>
+
               <input
                 type="text"
-                placeholder="Tanya outfit, padu padan warna, ukuran cm baju, atau ketik pertanyaanmu..."
+                placeholder={
+                  attachedImage 
+                    ? "Foto terpasang. Ketik pertanyaanmu atau langsung kirim..." 
+                    : aiMode === 'link_only'
+                      ? "Mode Cepat: Cari link produk kemeja, celana, dress..."
+                      : "Tanya padu padan warna, ukuran cm baju, atau rekomendasi..."
+                }
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                disabled={isTyping}
+                disabled={isTyping || remainingQuota <= 0}
                 className="flex-1 bg-transparent px-2.5 py-1.5 text-xs sm:text-sm text-[#162D24] focus:outline-none disabled:opacity-50 font-medium placeholder:text-neutral-400"
               />
 
               <button
                 type="submit"
-                disabled={!inputValue.trim() || isTyping}
+                disabled={(!inputValue.trim() && !attachedImage) || isTyping || remainingQuota <= 0}
                 className="w-9 h-9 rounded-xl bg-[#162D24] hover:bg-[#203D31] text-white flex items-center justify-center disabled:opacity-30 transition-all active:scale-95 shadow-xs cursor-pointer shrink-0"
                 title="Kirim Pesan"
               >
@@ -560,12 +851,88 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
               </button>
             </form>
 
-            <p className="text-[10px] text-neutral-400 text-center mt-2">
-              Outfitly Stylist memadukan ukuran sentimeter nyata (cm) dan kurasi produk lokal terverifikasi.
-            </p>
+            <div className="flex items-center justify-between text-[10px] text-neutral-400 px-1">
+              <span>{aiMode === 'link_only' ? '⚡ Mode Cepat: Fokus daftar link produk & harga' : '✨ Stylist Pro: Analisis sentimeter & paduan gaya'}</span>
+              <span>Outfitly Stylist • Produk Lokal Indonesia</span>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* 4. Chat History Drawer / Modal */}
+      {isHistoryOpen && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end animate-fadeIn">
+          <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col justify-between animate-slideInRight">
+            <div className="p-5 border-b border-[#F0EFEA] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <History className="w-5 h-5 text-[#2D5A47]" />
+                <h3 className="font-serif font-bold text-base text-[#162D24]">Riwayat Percakapan</h3>
+              </div>
+              <button
+                onClick={() => setIsHistoryOpen(false)}
+                className="p-1.5 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* List of Past Sessions */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {savedSessions.length === 0 ? (
+                <div className="py-16 text-center text-xs text-neutral-400 space-y-2">
+                  <Clock className="w-8 h-8 mx-auto text-neutral-300" />
+                  <p>Belum ada riwayat percakapan tersimpan.</p>
+                  <p className="text-[11px] text-neutral-500">
+                    Setiap percakapan akan otomatis disimpan saat kamu mengklik Chat Baru.
+                  </p>
+                </div>
+              ) : (
+                savedSessions.map((sess) => (
+                  <div
+                    key={sess.id}
+                    onClick={() => handleOpenPastSession(sess)}
+                    className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between group ${
+                      sess.id === sessionId
+                        ? 'bg-[#EAF2EE] border-[#8EA89D]'
+                        : 'bg-[#FAF9F5] border-[#E8E4D9] hover:bg-white hover:border-[#162D24]'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <h4 className="text-xs font-bold text-[#162D24] truncate group-hover:text-[#2D5A47]">
+                        {sess.title}
+                      </h4>
+                      <p className="text-[10px] text-neutral-400 mt-0.5">
+                        {sess.createdAt} • {sess.messages.length} pesan
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={(e) => handleDeleteSession(sess.id, e)}
+                      className="p-1.5 text-neutral-400 hover:text-rose-600 rounded-lg hover:bg-rose-50 transition-colors ml-2"
+                      title="Hapus Sesi"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="p-4 border-t border-[#F0EFEA] space-y-2">
+              <button
+                onClick={() => {
+                  handleStartNewChat();
+                  setIsHistoryOpen(false);
+                }}
+                className="w-full py-3 bg-[#162D24] hover:bg-[#203D31] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-2 cursor-pointer transition-colors"
+              >
+                <MessageSquarePlus className="w-4 h-4 text-[#8EA89D]" />
+                <span>Mulai Percakapan Baru</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

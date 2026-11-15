@@ -11,7 +11,6 @@ import { ReferenceFeedView } from '@/components/ReferenceFeedView';
 import { SavedItemsView } from '@/components/SavedItemsView';
 import { DashboardView } from '@/components/DashboardView';
 import { SellerDashboardView } from '@/components/SellerDashboardView';
-import { OrdersView } from '@/components/OrdersView';
 import { WardrobeView } from '@/components/WardrobeView';
 import { OutfitBuilderView } from '@/components/OutfitBuilderView';
 import { ProductDetailModal } from '@/components/ProductDetailModal';
@@ -211,6 +210,7 @@ export default function Home() {
             onOpenSmartSize={() => setIsSmartSizeOpen(true)}
             onOpenComparison={handleOpenComparison}
             onOpenCreatePost={() => setIsCreatePostOpen(true)}
+            onShowToast={showToast}
           />
         )}
 
@@ -232,7 +232,6 @@ export default function Home() {
             onNavigateChat={() => setCurrentView('chat')}
             onNavigateExplore={() => setCurrentView('reference')}
             onOpenSmartSize={() => setIsSmartSizeOpen(true)}
-            onNavigateOrders={() => setCurrentView('orders')}
             onNavigateSeller={() => setCurrentView('seller_dashboard')}
             onShowToast={showToast}
             onSelectWardrobeForStylist={(items) => {
@@ -276,13 +275,6 @@ export default function Home() {
             currentUsername={userData?.username || userData?.name || 'Penjual Outfitly'}
             onShowToast={showToast}
             onNavigateExplore={() => setCurrentView('reference')}
-          />
-        )}
-
-        {currentView === 'orders' && (
-          <OrdersView
-            onNavigateExplore={() => setCurrentView('reference')}
-            onShowToast={showToast}
           />
         )}
       </main>

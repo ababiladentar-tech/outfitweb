@@ -54,6 +54,50 @@ export type StylePreferenceType =
   | 'bohemian'
   | string;
 
+export interface StoreProfile {
+  id: string;
+  name: string;
+  username: string;
+  avatarUrl: string;
+  city: string;
+  rating: number;
+  reviewCount: number;
+  sellerType: 'umkm' | 'community_preloved' | 'collab_mitra' | 'reseller';
+  bio: string;
+  story: string; // Cerita UMKM & alasan membuka akun toko (mirip profil & story IG)
+  foundedYear?: string;
+  productCount: number;
+  followerCount: number;
+  isFollowed?: boolean;
+  contactNumber: string;
+  instagramHandle?: string;
+  externalShopUrl?: string; // Shopee / Tokopedia / Website
+}
+
+export interface PostComment {
+  id: string;
+  postId: string;
+  author: string;
+  avatar?: string;
+  text: string;
+  timestamp: string;
+}
+
+export interface CommunityPost {
+  id: string;
+  author: string;
+  authorUsername: string;
+  authorAvatar: string;
+  imageUrl: string;
+  title: string;
+  caption: string;
+  tags: string[];
+  likes: number;
+  isLiked?: boolean;
+  commentsCount: number;
+  createdAt: string;
+}
+
 // Fit preference for clothing
 export type FitPreferenceType = 'slim' | 'regular' | 'relaxed' | 'oversized';
 
@@ -94,7 +138,8 @@ export type ProductConditionType =
 export type SellerType = 
   | 'umkm'                // Independent Local Indonesian Brand / UMKM
   | 'community_preloved'  // Individual Community Seller (Thrift / Preloved)
-  | 'reseller';           // Curated Vintage / Reseller Partner
+  | 'collab_mitra'        // Collab Mitra / Curated Vintage Partner
+  | 'reseller';           // Reseller Partner
 
 export interface UserOnboardingProfile {
   username?: string;
@@ -119,6 +164,7 @@ export interface UMKMProductPost {
   sellerRating: number;
   sellerReviewCount: number;
   sellerContact: string;
+  externalLink?: string; // Tautan langsung ke Shopee / Tokopedia / WhatsApp / Web toko
   platform?: 'shopee' | 'tokopedia' | 'whatsapp' | 'instagram' | 'outfitly_direct' | string;
   
   title: string;
@@ -214,7 +260,15 @@ export interface ChatMessage {
   sender: 'ai' | 'user';
   text: string;
   timestamp: string;
+  imageUrl?: string;
   recommendedProducts?: UMKMProductPost[];
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: string;
+  messages: ChatMessage[];
 }
 
 export interface MarketplaceOrder {

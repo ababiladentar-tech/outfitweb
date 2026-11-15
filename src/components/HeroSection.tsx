@@ -300,6 +300,23 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
               <p className="text-xs text-neutral-300 max-w-sm leading-relaxed">
                 Outfitly adalah platform kurasi gaya personal yang membantu menemukan paduan busana sesuai karakteristik fisik dan menghubungkan pengguna dengan karya UMKM lokal Indonesia.
               </p>
+              <div className="pt-1 flex items-center gap-4 text-xs text-neutral-300">
+                <a 
+                  href="https://instagram.com/outfitly.id" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="hover:text-white font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <span className="text-[#8EA89D]">IG:</span> @outfitly.id
+                </a>
+                <span>•</span>
+                <a 
+                  href="mailto:contact@outfitly.id" 
+                  className="hover:text-white font-semibold transition-colors flex items-center gap-1.5"
+                >
+                  <span className="text-[#8EA89D]">Email:</span> contact@outfitly.id
+                </a>
+              </div>
             </div>
 
             {/* Col 2: Navigation */}

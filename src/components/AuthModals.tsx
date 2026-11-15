@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, Check, AlertCircle } from 'lucide-react';
 
 interface AuthModalsProps {
   isOpen: boolean;
@@ -17,6 +17,7 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
   onAuthSuccess
 }) => {
   const [currentStep, setCurrentStep] = useState<AuthStep>('welcome_signup');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -30,10 +31,46 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
     birthYear: '02'
   });
 
+  // Password validation checks (Min 8 chars, Capital letter, Number, Special char)
+  const hasMinLength = formData.password.length >= 8;
+  const hasCapital = /[A-Z]/.test(formData.password);
+  const hasNumber = /[0-9]/.test(formData.password);
+  const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(formData.password);
+  const isPasswordValid = hasMinLength && hasCapital && hasNumber && hasSpecial;
+
   if (!isOpen) return null;
+
+  // Direct Social Sign-In (Instant 1-Click for Google, X, Facebook)
+  const handleDirectSocialLogin = (provider: 'google' | 'facebook' | 'twitter') => {
+    if (provider === 'google') {
+      onAuthSuccess({
+        username: 'nadia_google',
+        name: 'Nadia Rahmawati',
+        birthDate: '15-08-2002'
+      });
+    } else if (provider === 'facebook') {
+      onAuthSuccess({
+        username: 'airlangga_fb',
+        name: 'Airlangga Pratama',
+        birthDate: '20-04-2001'
+      });
+    } else {
+      onAuthSuccess({
+        username: 'adentar_x',
+        name: 'Adentar Tech',
+        birthDate: '10-12-2000'
+      });
+    }
+    onClose();
+  };
 
   const handleSignUpSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isPasswordValid) {
+      setPasswordError('Password harus memenuhi seluruh ketentuan: minimal 8 karakter, huruf kapital, angka, dan karakter khusus.');
+      return;
+    }
+    setPasswordError(null);
     setCurrentStep('custom_username');
   };
 
@@ -108,8 +145,9 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
               {/* Google Button */}
               <button
                 type="button"
-                onClick={() => setCurrentStep('custom_username')}
-                className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] text-xs font-bold transition-all shadow-sm cursor-pointer"
+                onClick={() => handleDirectSocialLogin('google')}
+                className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-102"
+                title="Masuk Langsung dengan Google"
               >
                 <svg className="w-4 h-4" viewBox="0 0 24 24">
                   <path
@@ -135,9 +173,9 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
               {/* Facebook Button */}
               <button
                 type="button"
-                onClick={() => setCurrentStep('custom_username')}
-                className="w-10 h-10 rounded-full border border-neutral-400/50 bg-[#162D24] hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer shadow-sm text-white"
-                title="Sign In with Facebook"
+                onClick={() => handleDirectSocialLogin('facebook')}
+                className="w-10 h-10 rounded-full border border-neutral-400/50 bg-[#162D24] hover:bg-white/10 flex items-center justify-center transition-all cursor-pointer shadow-sm text-white hover:scale-105"
+                title="Masuk Langsung dengan Facebook"
               >
                 <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
                   <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
@@ -147,9 +185,9 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
               {/* Twitter / X Button */}
               <button
                 type="button"
-                onClick={() => setCurrentStep('custom_username')}
-                className="w-10 h-10 rounded-full border border-neutral-400/50 bg-[#162D24] hover:bg-white/10 flex items-center justify-center transition-colors cursor-pointer shadow-sm text-white"
-                title="Sign In with X / Twitter"
+                onClick={() => handleDirectSocialLogin('twitter')}
+                className="w-10 h-10 rounded-full border border-neutral-400/50 bg-[#162D24] hover:bg-white/10 flex items-center justify-center transition-all cursor-pointer shadow-sm text-white hover:scale-105"
+                title="Masuk Langsung dengan X / Twitter"
               >
                 <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
@@ -163,6 +201,13 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
               <span>OR</span>
               <div className="flex-1 h-px bg-neutral-600/60" />
             </div>
+
+            {passwordError && (
+              <div className="p-3 rounded-2xl bg-rose-900/60 border border-rose-500/50 text-rose-200 text-xs flex items-center gap-2 text-left">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{passwordError}</span>
+              </div>
+            )}
 
             {/* Sign Up Form */}
             <form onSubmit={handleSignUpSubmit} className="space-y-4 text-left">
@@ -218,13 +263,52 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
                   <input
                     type="password"
                     required
-                    placeholder="Type Here...."
+                    placeholder="Buat password aman..."
                     value={formData.password}
-                    onChange={e => setFormData({ ...formData, password: e.target.value })}
+                    onChange={e => {
+                      setFormData({ ...formData, password: e.target.value });
+                      if (passwordError) setPasswordError(null);
+                    }}
                     className="w-full px-4 py-2.5 rounded-full bg-[#162D24] border border-[#3A5E50] text-xs text-white placeholder:text-neutral-500 focus:border-[#8EA89D] outline-hidden"
                   />
                 </div>
               </div>
+
+              {/* Password Requirements Checklist */}
+              {formData.password.length > 0 && (
+                <div className="p-3 rounded-2xl bg-[#162D24] border border-[#3A5E50] text-[10px] space-y-1.5 animate-fadeIn">
+                  <span className="font-bold text-[#8EA89D] block mb-1">Ketentuan Keamanan Password:</span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}`}>
+                      <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasMinLength ? 'bg-emerald-500 text-[#162D24]' : 'bg-white/10'}`}>
+                        {hasMinLength ? '✓' : '•'}
+                      </span>
+                      <span>Min. 8 Karakter</span>
+                    </div>
+
+                    <div className={`flex items-center gap-1.5 ${hasCapital ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}`}>
+                      <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasCapital ? 'bg-emerald-500 text-[#162D24]' : 'bg-white/10'}`}>
+                        {hasCapital ? '✓' : '•'}
+                      </span>
+                      <span>Huruf Kapital (A-Z)</span>
+                    </div>
+
+                    <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}`}>
+                      <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasNumber ? 'bg-emerald-500 text-[#162D24]' : 'bg-white/10'}`}>
+                        {hasNumber ? '✓' : '•'}
+                      </span>
+                      <span>Angka (0-9)</span>
+                    </div>
+
+                    <div className={`flex items-center gap-1.5 ${hasSpecial ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}`}>
+                      <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasSpecial ? 'bg-emerald-500 text-[#162D24]' : 'bg-white/10'}`}>
+                        {hasSpecial ? '✓' : '•'}
+                      </span>
+                      <span>Karakter Khusus (!@#$)</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Checkbox */}
               <label className="flex items-center gap-2 text-[11px] text-neutral-300 cursor-pointer pt-1">
@@ -275,6 +359,53 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
             <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-white font-sans">
               Login
             </h2>
+
+            {/* Social Logins on Login Step */}
+            <div className="flex items-center justify-center gap-3 pt-1">
+              <button
+                type="button"
+                onClick={() => handleDirectSocialLogin('google')}
+                className="flex items-center gap-2.5 px-5 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] text-xs font-bold transition-all shadow-sm cursor-pointer hover:scale-102"
+                title="Masuk Langsung dengan Google"
+              >
+                <svg className="w-4 h-4" viewBox="0 0 24 24">
+                  <path fill="#162D24" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                  <path fill="#162D24" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                  <path fill="#162D24" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z" />
+                  <path fill="#162D24" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z" />
+                </svg>
+                <span>Google</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDirectSocialLogin('facebook')}
+                className="w-10 h-10 rounded-full border border-neutral-400/50 bg-[#162D24] hover:bg-white/10 flex items-center justify-center transition-all cursor-pointer shadow-sm text-white hover:scale-105"
+                title="Masuk Langsung dengan Facebook"
+              >
+                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
+                  <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                </svg>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleDirectSocialLogin('twitter')}
+                className="w-10 h-10 rounded-full border border-neutral-400/50 bg-[#162D24] hover:bg-white/10 flex items-center justify-center transition-all cursor-pointer shadow-sm text-white hover:scale-105"
+                title="Masuk Langsung dengan X / Twitter"
+              >
+                <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+              </button>
+            </div>
+
+            {/* OR Divider */}
+            <div className="flex items-center gap-3 text-[11px] uppercase tracking-widest text-neutral-400">
+              <div className="flex-1 h-px bg-neutral-600/60" />
+              <span>OR</span>
+              <div className="flex-1 h-px bg-neutral-600/60" />
+            </div>
 
             <form onSubmit={handleLoginSubmit} className="space-y-4 text-left">
               <div>

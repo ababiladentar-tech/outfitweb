@@ -9,12 +9,16 @@ export async function POST(req: NextRequest) {
       message, 
       profile, 
       history,
-      wardrobeItems 
+      wardrobeItems,
+      imageUrl,
+      aiMode = 'stylist_pro'
     }: { 
       message: string; 
       profile?: any; 
       history?: Array<{ sender: 'ai' | 'user'; text: string }>;
       wardrobeItems?: Array<{ id: string; name: string; category: string; color: string; style: string }>;
+      imageUrl?: string;
+      aiMode?: 'link_only' | 'stylist_pro';
     } = await req.json();
 
     if (!message || !message.trim()) {
@@ -133,8 +137,24 @@ Instruksi Balasan:
       }
     }
 
+    // Mode Biasa: Hanya mengirimkan daftar link produk cepat
+    if (aiMode === 'link_only') {
+      const linkReply = (imageUrl ? `📸 *Foto referensi berhasil dianalisis!*\n\n` : '') +
+        `Halo ${name}! Ini daftar rekomendasi produk cepat dan tautan langsung untukmu:\n\n` +
+        recommendedProducts.map((p, idx) => 
+          `${idx + 1}. **${p.title}**\n` +
+          `   • Toko: **${p.sellerName}** (${p.sellerCity})\n` +
+          `   • Harga: **Rp ${p.price.toLocaleString('id-ID')}** (${p.sellerType === 'community_preloved' ? 'Preloved' : p.sellerType === 'collab_mitra' ? 'Collab Mitra' : 'UMKM'})\n` +
+          `   • Tautan Langsung: [Lihat Detail & Beli](#prod-${p.id})`
+        ).join('\n\n') +
+        `\n\nKamu bisa klik langsung kartu produk di bawah untuk memesan via WhatsApp atau melihat tautan Shopee/Tokopedia toko.`;
+      
+      return NextResponse.json({ reply: linkReply, recommendedProducts });
+    }
+
     // Local Intelligent Engine
     let reply = '';
+    const imagePrefix = imageUrl ? `📸 *Foto pakaian telah diunggah!* Kami mendeteksi siluet dan nada warna yang menarik untuk dipadukan.\n\n` : '';
 
     const mentionsWardrobe = raw.includes('lemari') || raw.includes('baju saya') || raw.includes('wardrobe') || raw.includes('padukan') || raw.includes('punya');
     if (mentionsWardrobe) {
@@ -198,7 +218,7 @@ Kamu bisa menanyakan rekomendasi setelan, mencari pakaian dengan rentang budget 
 Berikut beberapa koleksi unggulan yang bisa kamu cek:`;
     }
 
-    return NextResponse.json({ reply, recommendedProducts });
+    return NextResponse.json({ reply: imagePrefix + reply, recommendedProducts });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Error stylist chat';
     return NextResponse.json({ error: msg }, { status: 500 });

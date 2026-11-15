@@ -175,14 +175,27 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
           ))}
         </div>
 
-        {/* Close Button */}
-        <button
-          onClick={onClose}
-          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
-          title="Tutup"
-        >
-          <X className="w-4 h-4" />
-        </button>
+        {/* Close & Skip Buttons */}
+        <div className="absolute top-5 right-5 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              onComplete(profile);
+              onClose();
+            }}
+            className="text-xs text-neutral-300 hover:text-white px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-all font-semibold cursor-pointer"
+            title="Lewati kuesioner dan gunakan profil default"
+          >
+            Lewati (Skip)
+          </button>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors cursor-pointer"
+            title="Tutup"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
         {/* STEP 1: Figma Frame 4 - which gender do you identify as ? */}
         {step === 1 && (
@@ -714,10 +727,37 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
         {/* STEP 6: Select Style Preferences & Selesai */}
         {step === 6 && (
-          <div className="text-center space-y-6 py-2 animate-fadeIn">
-            <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-sans">
-              Select Style Preferences
-            </h2>
+          <div className="text-center space-y-5 py-2 animate-fadeIn">
+            <div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white font-sans">
+                Select Style Preferences
+              </h2>
+              <p className="text-xs text-neutral-300 mt-1">
+                Pilih gaya favoritmu untuk kurasi outfit yang sesuai karaktermu
+              </p>
+            </div>
+
+            {/* Select All Toggle Bar */}
+            <div className="flex items-center justify-between max-w-md mx-auto px-2">
+              <span className="text-[11px] text-neutral-400">Pilihan Gaya:</span>
+              <button
+                type="button"
+                onClick={() => {
+                  const defaultList = ['casual', 'formal', 'minimalist', 'streetwear', 'old_money_smart', 'etnik_batik_modern'];
+                  const isAllSelected = defaultList.every(s => profile.stylePreferences.includes(s));
+                  if (isAllSelected) {
+                    setProfile({ ...profile, stylePreferences: ['casual'] });
+                  } else {
+                    setProfile({ ...profile, stylePreferences: [...defaultList] });
+                  }
+                }}
+                className="text-xs font-bold text-[#8EA89D] hover:text-white px-3 py-1 rounded-full bg-white/10 hover:bg-white/20 transition-all cursor-pointer"
+              >
+                {['casual', 'formal', 'minimalist', 'streetwear', 'old_money_smart', 'etnik_batik_modern'].every(s => profile.stylePreferences.includes(s))
+                  ? 'Batal Pilih Semua'
+                  : '✓ Pilih Semua (Select All)'}
+              </button>
+            </div>
 
             <div className="grid grid-cols-2 gap-3 max-w-md mx-auto pt-1">
               {[

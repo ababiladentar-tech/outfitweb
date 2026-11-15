@@ -1,9 +1,18 @@
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { UMKMProductPost, UserOnboardingProfile, SellerType, ProductConditionType } from '@/types';
-import { getStoredProducts } from '@/data/marketplace-store';
+import { UMKMProductPost, UserOnboardingProfile, SellerType, ProductConditionType, StoreProfile, CommunityPost } from '@/types';
+import { 
+  getStoredProducts, 
+  getCommunityPosts, 
+  toggleLikeCommunityPost, 
+  getStoreProfileByNameOrId,
+  getFollowedStoreIds,
+  toggleFollowStore 
+} from '@/data/marketplace-store';
 import { calculateSizeCompatibility } from '@/lib/sizing-engine';
+import { StoreProfileModal } from './StoreProfileModal';
+import { CommentsModal } from './CommentsModal';
 import {
   Share2,
   SlidersHorizontal,
@@ -19,7 +28,13 @@ import {
   Heart,
   ArrowRightLeft,
   ShoppingBag,
-  Plus
+  Plus,
+  MessageSquare,
+  BookmarkCheck,
+  UserCheck,
+  UserPlus,
+  Layers,
+  ExternalLink
 } from 'lucide-react';
 
 interface ReferenceFeedViewProps {
@@ -30,6 +45,7 @@ interface ReferenceFeedViewProps {
   onOpenSmartSize?: () => void;
   onOpenComparison?: (product: UMKMProductPost) => void;
   onOpenCreatePost?: () => void;
+  onShowToast?: (text: string) => void;
 }
 
 export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
@@ -39,9 +55,17 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
   userProfile,
   onOpenSmartSize,
   onOpenComparison,
-  onOpenCreatePost
+  onOpenCreatePost,
+  onShowToast
 }) => {
   const [products, setProducts] = useState<UMKMProductPost[]>([]);
+  const [mainTab, setMainTab] = useState<'marketplace' | 'community'>('marketplace');
+  const [communityPosts, setCommunityPosts] = useState<CommunityPost[]>([]);
+  const [selectedStore, setSelectedStore] = useState<StoreProfile | null>(null);
+  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
+  const [activeCommentPost, setActiveCommentPost] = useState<{ id: string; title: string } | null>(null);
+  const [likedProductIds, setLikedProductIds] = useState<string[]>([]);
+  const [followedStoreIds, setFollowedStoreIds] = useState<string[]>([]);
 
   // 1. Centralized Filter States
   const [searchQuery, setSearchQuery] = useState('');
@@ -58,13 +82,42 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
   const [sortBy, setSortBy] = useState<'relevance' | 'smart_fit' | 'price_low' | 'price_high' | 'popular' | 'newest'>('relevance');
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState<boolean>(false);
 
-  // Load products & listen to updates
+  // Load products, community posts & store follows
   useEffect(() => {
-    setProducts(getStoredProducts());
-    const handleUpdate = () => setProducts(getStoredProducts());
-    window.addEventListener('outfitly_products_updated', handleUpdate);
-    return () => window.removeEventListener('outfitly_products_updated', handleUpdate);
+    const refreshAll = () => {
+      setProducts(getStoredProducts());
+      setCommunityPosts(getCommunityPosts());
+      setFollowedStoreIds(getFollowedStoreIds());
+    };
+    refreshAll();
+    window.addEventListener('outfitly_products_updated', refreshAll);
+    window.addEventListener('outfitly_community_posts_updated', refreshAll);
+    window.addEventListener('outfitly_store_follows_updated', refreshAll);
+    return () => {
+      window.removeEventListener('outfitly_products_updated', refreshAll);
+      window.removeEventListener('outfitly_community_posts_updated', refreshAll);
+      window.removeEventListener('outfitly_store_follows_updated', refreshAll);
+    };
   }, []);
+
+  const handleToggleLikeProduct = (productId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setLikedProductIds(prev => 
+      prev.includes(productId) ? prev.filter(id => id !== productId) : [...prev, productId]
+    );
+  };
+
+  const handleToggleLikeCommunity = (postId: string) => {
+    toggleLikeCommunityPost(postId);
+    setCommunityPosts(getCommunityPosts());
+  };
+
+  const handleOpenStoreProfile = (sellerNameOrId: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const prof = getStoreProfileByNameOrId(sellerNameOrId);
+    setSelectedStore(prof);
+    setIsStoreModalOpen(true);
+  };
 
   // Category list
   const categories = [
@@ -79,12 +132,12 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
     { id: 'hijab', label: 'Hijab Chic' }
   ];
 
-  // Seller Type tabs
+  // Seller Type tabs - "Vintage Resale" diganti "Collab Mitra"
   const sellerTypes = [
     { id: 'all', label: 'Semua Sumber' },
     { id: 'umkm', label: 'UMKM Brand Baru' },
     { id: 'community_preloved', label: 'Preloved Thrift' },
-    { id: 'reseller', label: 'Vintage Resale' }
+    { id: 'reseller', label: 'Collab Mitra' }
   ];
 
   // Condition options
@@ -307,65 +360,97 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
           </div>
         </div>
 
-        {/* Source Navigation Tabs & Search Controls */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Seller Type Segmented Switcher */}
-          <div className="flex items-center gap-1.5 p-1 bg-[#E8E6DF] rounded-xl overflow-x-auto">
-            {sellerTypes.map((st) => (
-              <button
-                key={st.id}
-                onClick={() => setSelectedSellerType(st.id)}
-                className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                  selectedSellerType === st.id
-                    ? 'bg-white text-[#162D24] shadow-xs font-bold'
-                    : 'text-neutral-600 hover:text-[#162D24]'
-                }`}
-              >
-                {st.label}
-              </button>
-            ))}
-          </div>
+        {/* Main Tab Switcher: Marketplace UMKM vs Komunitas OOTD */}
+        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#E8E6DF] w-fit">
+          <button
+            onClick={() => setMainTab('marketplace')}
+            className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              mainTab === 'marketplace'
+                ? 'bg-[#162D24] text-white shadow-xs'
+                : 'text-neutral-600 hover:text-[#162D24]'
+            }`}
+          >
+            <ShoppingBag className="w-4 h-4 text-[#8EA89D]" />
+            <span>Marketplace & Katalog UMKM</span>
+          </button>
 
-          {/* Search Bar & Filter Toggle */}
-          <div className="flex items-center gap-2.5 flex-1 max-w-lg">
-            <div className="relative flex-1">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-              <input
-                type="text"
-                placeholder="Cari kemeja vintage, vest denim, thrift blazer..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-9 py-2.5 bg-white rounded-xl border border-[#DCDAD2] text-xs sm:text-sm text-[#162D24] placeholder-neutral-400 focus:outline-none focus:border-[#162D24] transition-all"
-              />
-              {searchQuery && (
+          <button
+            onClick={() => setMainTab('community')}
+            className={`px-5 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all flex items-center gap-2 cursor-pointer ${
+              mainTab === 'community'
+                ? 'bg-[#162D24] text-white shadow-xs'
+                : 'text-neutral-600 hover:text-[#162D24]'
+            }`}
+          >
+            <Sparkles className="w-4 h-4 text-[#8EA89D]" />
+            <span>Komunitas Gaya & OOTD</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/20 font-bold">
+              {communityPosts.length} Post
+            </span>
+          </button>
+        </div>
+
+        {/* Conditional Controls for Marketplace */}
+        {mainTab === 'marketplace' && (
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pt-2">
+            {/* Seller Type Segmented Switcher */}
+            <div className="flex items-center gap-1.5 p-1 bg-[#E8E6DF] rounded-xl overflow-x-auto">
+              {sellerTypes.map((st) => (
                 <button
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                  key={st.id}
+                  onClick={() => setSelectedSellerType(st.id)}
+                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                    selectedSellerType === st.id
+                      ? 'bg-white text-[#162D24] shadow-xs font-bold'
+                      : 'text-neutral-600 hover:text-[#162D24]'
+                  }`}
                 >
-                  <X className="w-3.5 h-3.5" />
+                  {st.label}
                 </button>
-              )}
+              ))}
             </div>
 
-            {/* Filter Toggle Button */}
-            <button
-              onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
-                activeFilterCount > 0
-                  ? 'bg-[#162D24] text-white shadow-xs'
-                  : 'bg-white text-[#162D24] border border-[#DCDAD2] hover:bg-[#FAF9F5]'
-              }`}
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>Filter</span>
-              {activeFilterCount > 0 && (
-                <span className="w-4 h-4 rounded-full bg-[#8EA89D] text-[#162D24] text-[10px] font-bold flex items-center justify-center">
-                  {activeFilterCount}
-                </span>
-              )}
-            </button>
+            {/* Search Bar & Filter Toggle */}
+            <div className="flex items-center gap-2.5 flex-1 max-w-lg">
+              <div className="relative flex-1">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
+                <input
+                  type="text"
+                  placeholder="Cari kemeja vintage, vest denim, thrift blazer..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-9 py-2.5 bg-white rounded-xl border border-[#DCDAD2] text-xs sm:text-sm text-[#162D24] placeholder-neutral-400 focus:outline-none focus:border-[#162D24] transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-neutral-400 hover:text-neutral-700 cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* Filter Toggle Button */}
+              <button
+                onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+                className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all cursor-pointer ${
+                  activeFilterCount > 0
+                    ? 'bg-[#162D24] text-white shadow-xs'
+                    : 'bg-white text-[#162D24] border border-[#DCDAD2] hover:bg-[#FAF9F5]'
+                }`}
+              >
+                <SlidersHorizontal className="w-3.5 h-3.5" />
+                <span>Filter</span>
+                {activeFilterCount > 0 && (
+                  <span className="w-4 h-4 rounded-full bg-[#8EA89D] text-[#162D24] text-[10px] font-bold flex items-center justify-center">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Category Horizontal Tags */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
@@ -559,150 +644,319 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
         </div>
       </div>
 
-      {/* Product Results Grid */}
-      {filteredProducts.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-[#DCDAD2] max-w-md mx-auto my-10 space-y-4 shadow-xs">
-          <div className="w-12 h-12 rounded-full bg-[#FAF9F5] text-neutral-400 flex items-center justify-center mx-auto border border-[#DCDAD2]">
-            <Search className="w-5 h-5" />
+      {/* VIEW 1: MARKETPLACE CATALOG */}
+      {mainTab === 'marketplace' ? (
+        filteredProducts.length === 0 ? (
+          <div className="bg-white rounded-2xl p-12 text-center border border-[#DCDAD2] max-w-md mx-auto my-10 space-y-4 shadow-xs">
+            <div className="w-12 h-12 rounded-full bg-[#FAF9F5] text-neutral-400 flex items-center justify-center mx-auto border border-[#DCDAD2]">
+              <Search className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="font-serif font-bold text-base text-[#162D24]">Belum Ada Rilisan yang Sesuai</h3>
+              <p className="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
+                Coba gunakan kata kunci lain, pilih semua sumber penjual, atau nonaktifkan filter ukuran ketat.
+              </p>
+            </div>
+            <button
+              onClick={handleResetFilters}
+              className="px-5 py-2.5 bg-[#162D24] text-white rounded-xl text-xs font-semibold hover:bg-[#203D31] transition-colors cursor-pointer"
+            >
+              Tampilkan Semua Rilisan
+            </button>
           </div>
-          <div className="space-y-1">
-            <h3 className="font-serif font-bold text-base text-[#162D24]">Belum Ada Rilisan yang Sesuai</h3>
-            <p className="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
-              Coba gunakan kata kunci lain, pilih semua sumber penjual, atau nonaktifkan filter ukuran ketat.
-            </p>
-          </div>
-          <button
-            onClick={handleResetFilters}
-            className="px-5 py-2.5 bg-[#162D24] text-white rounded-xl text-xs font-semibold hover:bg-[#203D31] transition-colors cursor-pointer"
-          >
-            Tampilkan Semua Rilisan
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => {
-            const isSaved = savedPostIds.includes(product.id);
-            const fit = calculateSizeCompatibility(product, userProfile?.measurements);
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredProducts.map((product) => {
+              const isSaved = savedPostIds.includes(product.id);
+              const isLiked = likedProductIds.includes(product.id);
+              const fit = calculateSizeCompatibility(product, userProfile?.measurements);
+              const isFollowed = followedStoreIds.includes(product.sellerId);
 
-            return (
-              <div
-                key={product.id}
-                className="group bg-white rounded-2xl overflow-hidden border border-[#DCDAD2] hover:border-[#162D24]/30 shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between"
-              >
-                {/* Image Container with Badges */}
+              return (
                 <div
-                  onClick={() => onSelectProduct(product)}
-                  className="relative aspect-3/4 overflow-hidden bg-[#F4F1EA] cursor-pointer"
+                  key={product.id}
+                  className="group bg-white rounded-2xl overflow-hidden border border-[#DCDAD2] hover:border-[#162D24]/30 shadow-2xs hover:shadow-md transition-all duration-300 flex flex-col justify-between"
                 >
-                  <img
-                    src={product.imageUrl}
-                    alt={product.title}
-                    className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
-                  />
+                  {/* Image Container with Badges */}
+                  <div
+                    onClick={() => onSelectProduct(product)}
+                    className="relative aspect-3/4 overflow-hidden bg-[#F4F1EA] cursor-pointer"
+                  >
+                    <img
+                      src={product.imageUrl}
+                      alt={product.title}
+                      className="w-full h-full object-cover group-hover:scale-103 transition-transform duration-500"
+                    />
 
-                  {/* Top Bar Badges */}
-                  <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-none">
-                    <span className={`px-2.5 py-1 rounded-md text-[10px] font-semibold tracking-wide backdrop-blur-xs shadow-xs ${
-                      product.sellerType === 'community_preloved' 
-                        ? 'bg-[#FAF0E6]/95 text-[#634832] border border-[#E8D9C8]' 
-                        : 'bg-[#162D24]/90 text-white'
-                    }`}>
-                      {product.sellerType === 'community_preloved' ? 'Preloved Thrift' : 'Brand Lokal UMKM'}
-                    </span>
+                    {/* Top Bar Badges */}
+                    <div className="absolute top-3 left-3 right-3 flex justify-between items-start pointer-events-none">
+                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-semibold tracking-wide backdrop-blur-xs shadow-xs ${
+                        product.sellerType === 'community_preloved' 
+                          ? 'bg-[#FAF0E6]/95 text-[#634832] border border-[#E8D9C8]' 
+                          : product.sellerType === 'reseller'
+                          ? 'bg-[#EAF2EE]/95 text-[#162D24] border border-[#BFD9CD]'
+                          : 'bg-[#162D24]/90 text-white'
+                      }`}>
+                        {product.sellerType === 'community_preloved' 
+                          ? 'Preloved Thrift' 
+                          : product.sellerType === 'reseller' 
+                          ? 'Collab Mitra' 
+                          : 'Brand Lokal UMKM'}
+                      </span>
 
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleSave(product.id);
-                      }}
-                      className="pointer-events-auto w-8 h-8 rounded-full bg-white/90 hover:bg-white text-[#162D24] flex items-center justify-center shadow-xs transition-all cursor-pointer"
-                      title="Simpan Outfit"
-                    >
-                      <Heart className={`w-4 h-4 ${isSaved ? 'fill-[#C95D63] text-[#C95D63]' : 'text-[#162D24]'}`} />
-                    </button>
+                      {/* Bookmark Save Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleSave(product.id);
+                        }}
+                        className={`pointer-events-auto w-8 h-8 rounded-full bg-white/90 hover:bg-white flex items-center justify-center shadow-xs transition-all cursor-pointer ${
+                          isSaved ? 'text-[#8EA89D] ring-2 ring-[#8EA89D]' : 'text-neutral-700'
+                        }`}
+                        title="Simpan Outfit (Save)"
+                      >
+                        <BookmarkCheck className={`w-4 h-4 ${isSaved ? 'fill-[#8EA89D] text-[#162D24]' : ''}`} />
+                      </button>
+                    </div>
+
+                    {/* Smart Sizing Match Tag */}
+                    {userProfile?.measurements?.chestBustCm && (
+                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
+                        <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium backdrop-blur-xs shadow-xs ${
+                          fit.overallScore >= 80 
+                            ? 'bg-[#162D24]/90 text-[#8EA89D]' 
+                            : 'bg-[#422D1D]/90 text-[#E8C8A8]'
+                        }`}>
+                          Smart Fit: {fit.overallScore}% ({fit.recommendedSize || 'Size S/M'})
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Smart Sizing Match Tag */}
-                  {userProfile?.measurements?.chestBustCm && (
-                    <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between">
-                      <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium backdrop-blur-xs shadow-xs ${
-                        fit.overallScore >= 80 
-                          ? 'bg-[#162D24]/90 text-[#8EA89D]' 
-                          : 'bg-[#422D1D]/90 text-[#E8C8A8]'
-                      }`}>
-                        Smart Fit: {fit.overallScore}% ({fit.recommendedSize || 'Size S/M'})
-                      </span>
-                    </div>
-                  )}
-                </div>
+                  {/* Card Content Details */}
+                  <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                    <div className="space-y-1.5">
+                      {/* Seller Account Link (Opens IG-style Store Profile Story) */}
+                      <div className="flex items-center justify-between text-[11px]">
+                        <button
+                          type="button"
+                          onClick={(e) => handleOpenStoreProfile(product.sellerName, e)}
+                          className="truncate max-w-[150px] font-bold text-neutral-800 hover:text-[#2D5A47] hover:underline flex items-center gap-1 cursor-pointer"
+                          title="Lihat Profil & Cerita UMKM Toko Ini"
+                        >
+                          <Store className="w-3.5 h-3.5 text-[#2D5A47] shrink-0" />
+                          <span className="truncate">{product.sellerName}</span>
+                        </button>
 
-                {/* Card Content Details */}
-                <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between text-[11px] text-neutral-500">
-                      <span className="truncate max-w-[130px] font-medium text-neutral-700">
-                        {product.sellerName}
-                      </span>
-                      <span className="text-[10px] text-neutral-500">
-                        {product.sellerCity}
-                      </span>
-                    </div>
-
-                    <h3
-                      onClick={() => onSelectProduct(product)}
-                      className="font-serif font-bold text-sm text-[#162D24] line-clamp-1 hover:text-[#2F4F42] cursor-pointer"
-                      title={product.title}
-                    >
-                      {product.title}
-                    </h3>
-
-                    {/* Price and measurement preview */}
-                    <div className="flex items-baseline justify-between pt-0.5">
-                      <div className="flex items-baseline gap-2">
-                        <span className="font-serif font-bold text-base text-[#162D24]">
-                          Rp {product.price.toLocaleString('id-ID')}
+                        <span className="text-[10px] text-neutral-400">
+                          {product.sellerCity}
                         </span>
-                        {product.originalPrice && (
-                          <span className="text-[10px] text-neutral-400 line-through">
-                            Rp {product.originalPrice.toLocaleString('id-ID')}
-                          </span>
-                        )}
                       </div>
 
-                      <span className="text-[10px] font-medium text-[#2F4F42] bg-[#EAF2EE] px-2 py-0.5 rounded">
-                        {product.condition === 'new' ? 'Baru' : 'Preloved'}
-                      </span>
+                      <h3
+                        onClick={() => onSelectProduct(product)}
+                        className="font-serif font-bold text-sm text-[#162D24] line-clamp-1 hover:text-[#2F4F42] cursor-pointer"
+                        title={product.title}
+                      >
+                        {product.title}
+                      </h3>
+
+                      {/* Price and condition */}
+                      <div className="flex items-baseline justify-between pt-0.5">
+                        <div className="flex items-baseline gap-2">
+                          <span className="font-serif font-bold text-base text-[#162D24]">
+                            Rp {product.price.toLocaleString('id-ID')}
+                          </span>
+                          {product.originalPrice && (
+                            <span className="text-[10px] text-neutral-400 line-through">
+                              Rp {product.originalPrice.toLocaleString('id-ID')}
+                            </span>
+                          )}
+                        </div>
+
+                        <span className="text-[10px] font-medium text-[#2F4F42] bg-[#EAF2EE] px-2 py-0.5 rounded">
+                          {product.condition === 'new' ? 'Baru' : 'Preloved'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Social Interactions: Like, Komen, Save & Sizing */}
+                    <div className="pt-2.5 border-t border-[#F0EFEA] flex items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center gap-2.5">
+                        {/* Like Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleLikeProduct(product.id, e)}
+                          className="flex items-center gap-1 text-[11px] text-neutral-600 hover:text-rose-600 transition-colors cursor-pointer"
+                          title="Sukai produk"
+                        >
+                          <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
+                          <span>{product.likes + (isLiked ? 1 : 0)}</span>
+                        </button>
+
+                        {/* Komen Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setActiveCommentPost({ id: product.id, title: product.title });
+                          }}
+                          className="flex items-center gap-1 text-[11px] text-neutral-600 hover:text-[#162D24] transition-colors cursor-pointer"
+                          title="Tulis komentar atau tanya ukuran"
+                        >
+                          <MessageSquare className="w-3.5 h-3.5" />
+                          <span>Komen</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        {onOpenComparison && (
+                          <button
+                            onClick={() => onOpenComparison(product)}
+                            className="p-1 rounded text-neutral-400 hover:text-[#162D24] hover:bg-[#FAF9F5] transition-colors cursor-pointer"
+                            title="Bandingkan Dimensi Pakaian"
+                          >
+                            <ArrowRightLeft className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => onSelectProduct(product)}
+                          className="px-3 py-1 bg-[#162D24] hover:bg-[#203D31] text-white rounded-lg text-[11px] font-bold transition-colors cursor-pointer"
+                        >
+                          Detail
+                        </button>
+                      </div>
                     </div>
                   </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : (
+        /* VIEW 2: COMMUNITY FEED (OOTD Inspiration) */
+        <div className="space-y-6">
+          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-[#DCDAD2] shadow-xs">
+            <div>
+              <h3 className="font-serif font-bold text-base text-[#162D24]">Inspirasi Gaya Komunitas Outfitly</h3>
+              <p className="text-xs text-neutral-500">Lihat bagaimana sobat gaya memadukan koleksi lemari & karya UMKM lokal</p>
+            </div>
+            {onOpenCreatePost && (
+              <button
+                onClick={onOpenCreatePost}
+                className="px-4 py-2 bg-[#162D24] hover:bg-[#203D31] text-white text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-4 h-4 text-[#8EA89D]" />
+                <span>Unggah OOTD</span>
+              </button>
+            )}
+          </div>
 
-                  {/* Size preview & Comparison action */}
-                  <div className="pt-2.5 border-t border-[#F0EFEA] flex items-center justify-between gap-2 text-[10px]">
-                    <div className="flex items-center gap-1.5 text-neutral-500 overflow-x-auto">
-                      <span className="font-medium text-neutral-400">Size:</span>
-                      {product.availableSizes.slice(0, 3).map((s) => (
-                        <span key={s.sizeLabel} className="bg-[#FAF9F5] px-1.5 py-0.5 rounded border border-[#E8E4D9] font-medium text-[#162D24]">
-                          {s.sizeLabel}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {communityPosts.map((post) => (
+              <div
+                key={post.id}
+                className="bg-white rounded-2xl border border-[#DCDAD2] overflow-hidden shadow-2xs hover:shadow-md transition-all flex flex-col justify-between"
+              >
+                {/* Community Post Header */}
+                <div className="p-3.5 flex items-center justify-between border-b border-neutral-100">
+                  <div className="flex items-center gap-2.5">
+                    <img
+                      src={post.authorAvatar}
+                      alt={post.author}
+                      className="w-8 h-8 rounded-full object-cover border border-neutral-200"
+                    />
+                    <div>
+                      <h4 className="font-bold text-xs text-[#162D24] leading-tight">{post.author}</h4>
+                      <p className="text-[10px] text-neutral-400">@{post.authorUsername}</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-neutral-400">
+                    {new Date(post.createdAt).toLocaleDateString('id-ID', { day: 'numeric', month: 'short' })}
+                  </span>
+                </div>
+
+                {/* Post Image */}
+                <div className="aspect-3/4 relative overflow-hidden bg-neutral-100">
+                  <img src={post.imageUrl} alt={post.title} className="w-full h-full object-cover" />
+                </div>
+
+                {/* Post Caption & Details */}
+                <div className="p-4 space-y-3 flex-1 flex flex-col justify-between">
+                  <div className="space-y-1.5">
+                    <h4 className="font-serif font-bold text-sm text-[#162D24] leading-snug">
+                      {post.title}
+                    </h4>
+                    <p className="text-xs text-neutral-600 leading-relaxed">
+                      {post.caption}
+                    </p>
+                    <div className="flex flex-wrap gap-1 pt-1">
+                      {post.tags.map((t, idx) => (
+                        <span key={idx} className="text-[10px] font-semibold text-[#2D5A47] bg-[#EAF2EE] px-2 py-0.5 rounded">
+                          {t}
                         </span>
                       ))}
                     </div>
+                  </div>
 
-                    {onOpenComparison && (
+                  {/* Actions: Like, Komen, Save */}
+                  <div className="pt-2.5 border-t border-neutral-100 flex items-center justify-between text-xs text-neutral-600">
+                    <div className="flex items-center gap-3">
                       <button
-                        onClick={() => onOpenComparison(product)}
-                        className="p-1 rounded text-neutral-400 hover:text-[#162D24] hover:bg-[#FAF9F5] transition-colors cursor-pointer"
-                        title="Bandingkan Dimensi Pakaian"
+                        onClick={() => handleToggleLikeCommunity(post.id)}
+                        className="flex items-center gap-1.5 hover:text-rose-600 transition-colors cursor-pointer"
                       >
-                        <ArrowRightLeft className="w-3.5 h-3.5" />
+                        <Heart className={`w-4 h-4 ${post.isLiked ? 'fill-rose-500 text-rose-500' : ''}`} />
+                        <span className="text-[11px] font-bold">{post.likes}</span>
                       </button>
-                    )}
+
+                      <button
+                        onClick={() => setActiveCommentPost({ id: post.id, title: post.title })}
+                        className="flex items-center gap-1.5 hover:text-[#162D24] transition-colors cursor-pointer"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span className="text-[11px] font-bold">{post.commentsCount} Komen</span>
+                      </button>
+                    </div>
+
+                    <button
+                      onClick={() => onToggleSave(post.id)}
+                      className={`p-1.5 rounded-lg hover:bg-neutral-100 transition-colors cursor-pointer ${
+                        savedPostIds.includes(post.id) ? 'text-[#8EA89D]' : 'text-neutral-500'
+                      }`}
+                      title="Simpan Outfit"
+                    >
+                      <BookmarkCheck className={`w-4 h-4 ${savedPostIds.includes(post.id) ? 'fill-[#8EA89D]' : ''}`} />
+                    </button>
                   </div>
                 </div>
               </div>
-            );
-          })}
+            ))}
+          </div>
         </div>
       )}
+
+      {/* Store Profile Modal (Instagram-style Store Story & Follow) */}
+      <StoreProfileModal
+        store={selectedStore}
+        isOpen={isStoreModalOpen}
+        onClose={() => setIsStoreModalOpen(false)}
+        products={products}
+        onSelectProduct={onSelectProduct}
+        onShowToast={onShowToast}
+      />
+
+      {/* Interactive Comments Modal */}
+      <CommentsModal
+        isOpen={!!activeCommentPost}
+        onClose={() => setActiveCommentPost(null)}
+        postId={activeCommentPost?.id || ''}
+        postTitle={activeCommentPost?.title || ''}
+        currentUsername={userProfile?.name || userProfile?.username || 'Teman Gaya'}
+        onShowToast={onShowToast}
+      />
     </div>
   );
 };

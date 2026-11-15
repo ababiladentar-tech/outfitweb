@@ -18,7 +18,8 @@ import {
   MessageSquare,
   Layers,
   Sparkles,
-  Shirt
+  Shirt,
+  Compass
 } from 'lucide-react';
 
 interface DashboardViewProps {
@@ -494,28 +495,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
           </div>
 
-          {/* Pesanan Rekber */}
+          {/* Komunitas & Feed Gaya */}
           <div className="bg-white rounded-3xl p-5 border border-[#D8D2C4] shadow-xs flex flex-col justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#FAF0E6] text-[#634832] flex items-center justify-center shrink-0">
-                <Package className="w-5 h-5 text-[#8EA89D]" />
+                <Compass className="w-5 h-5 text-[#8EA89D]" />
               </div>
               <div>
-                <h4 className="text-sm font-serif font-bold text-[#162D24]">Pesanan & Resi</h4>
+                <h4 className="text-sm font-serif font-bold text-[#162D24]">Komunitas & Feed</h4>
                 <p className="text-[11px] text-neutral-500">
-                  Pantau paket aktif & garansi
+                  Inspirasi gaya OOTD & katalog
                 </p>
               </div>
             </div>
 
-            {onNavigateOrders && (
-              <button
-                onClick={onNavigateOrders}
-                className="w-full py-2 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE8E0] border border-[#D8D2C4] text-xs font-bold text-[#162D24] transition-colors cursor-pointer text-center"
-              >
-                Lihat Pesanan
-              </button>
-            )}
+            <button
+              onClick={onNavigateExplore}
+              className="w-full py-2 rounded-xl bg-[#FAF9F5] hover:bg-[#EAE8E0] border border-[#D8D2C4] text-xs font-bold text-[#162D24] transition-colors cursor-pointer text-center"
+            >
+              Jelajahi Feed
+            </button>
           </div>
 
           {/* Lemari & Toko */}

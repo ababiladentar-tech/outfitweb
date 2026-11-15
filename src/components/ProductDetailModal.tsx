@@ -4,22 +4,27 @@ import React, { useState } from 'react';
 import { UMKMProductPost, BodyMeasurements } from '@/types';
 import { OFTEA_POSTS } from '@/data/umkm-products';
 import { calculateSizeCompatibility } from '@/lib/sizing-engine';
+import { StoreProfileModal } from '@/components/StoreProfileModal';
+import { CommentsModal } from '@/components/CommentsModal';
+import { getStoreProfileByNameOrId, incrementStoreTraffic } from '@/data/marketplace-store';
 import {
   ArrowLeft,
   Heart,
   MessageSquare,
-  Bookmark,
+  BookmarkCheck,
   Maximize2,
   Share2,
   CheckCircle2,
   Sparkles,
   ShoppingBag,
   Ruler,
-  ShieldCheck,
   ShieldAlert,
   ArrowRightLeft,
   AlertTriangle,
-  Info
+  Info,
+  Store,
+  ExternalLink,
+  MessageCircle
 } from 'lucide-react';
 
 interface ProductDetailModalProps {
@@ -52,6 +57,8 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(product?.likes || 120);
   const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
+  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
+  const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
 
   if (!product) return null;
 
@@ -60,9 +67,16 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
   const relatedProducts = OFTEA_POSTS.filter(p => p.id !== product.id && p.category === product.category).slice(0, 4);
 
   const handleVisitSite = () => {
+    incrementStoreTraffic('whatsappInquiries');
     const text = `Halo Admin ${product.sellerName}! Saya menemukan produk "${product.title}" (Rp ${product.price.toLocaleString('id-ID')}) di aplikasi Outfitly. Apakah ukuran ${currentSizeObj?.sizeLabel || 'ini'} ready stock?`;
     const url = `https://wa.me/${product.sellerContact}?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
+  };
+
+  const handleOpenExternalShop = () => {
+    if (!product.externalLink) return;
+    incrementStoreTraffic('externalLinkClicks');
+    window.open(product.externalLink, '_blank');
   };
 
   const handleShare = () => {
@@ -104,10 +118,15 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
               {currentCondition.label}
             </span>
 
-            <span className="text-xs font-bold text-[#162D24] px-3.5 py-1 rounded-full bg-white shadow-2xs border border-neutral-200 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+            <button
+              onClick={() => setIsStoreModalOpen(true)}
+              className="text-xs font-bold text-[#162D24] px-3.5 py-1 rounded-full bg-white shadow-2xs border border-neutral-200 hover:border-[#162D24] hover:bg-[#FAF9F5] flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Buka Profil & Cerita UMKM Toko"
+            >
+              <Store className="w-3.5 h-3.5 text-[#2D5A47]" />
               <span>{product.sellerName} • {product.sellerCity}</span>
-            </span>
+              <span className="text-[10px] text-[#2D5A47] font-semibold underline ml-1">Profil Toko</span>
+            </button>
 
             {onOpenReport && (
               <button
@@ -146,7 +165,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
           {/* Right Column: Details & Actions (7 cols) */}
           <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 shadow-lg space-y-6">
-            {/* Top Row: Actions */}
+            {/* Top Row: Actions (Like, Comment, Save, Share) */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 text-[#162D24]">
                 <button
@@ -154,31 +173,34 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                     setLiked(!liked);
                     setLikeCount(liked ? likeCount - 1 : likeCount + 1);
                   }}
-                  className="hover:scale-110 transition-transform cursor-pointer"
+                  className="flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer"
                   title="Suka Outfit Ini"
                 >
-                  <Heart className={`w-6 h-6 ${liked ? 'fill-rose-600 text-rose-600' : ''}`} />
+                  <Heart className={`w-5 h-5 ${liked ? 'fill-rose-600 text-rose-600' : ''}`} />
+                  <span className="text-xs font-semibold text-neutral-600">{likeCount}</span>
                 </button>
 
                 <button
-                  onClick={handleVisitSite}
-                  className="hover:scale-110 transition-transform cursor-pointer"
-                  title="Tanya Penjual via WhatsApp"
+                  onClick={() => setIsCommentsModalOpen(true)}
+                  className="flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer text-neutral-700 hover:text-[#162D24]"
+                  title="Lihat & Tulis Komentar"
                 >
-                  <MessageSquare className="w-6 h-6" />
+                  <MessageSquare className="w-5 h-5" />
+                  <span className="text-xs font-semibold">Komen</span>
                 </button>
 
                 <button
                   onClick={() => onToggleSave(product.id)}
-                  className="hover:scale-110 transition-transform cursor-pointer"
-                  title="Bookmark"
+                  className="flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer"
+                  title="Simpan Outfit"
                 >
-                  <Bookmark className={`w-6 h-6 ${isSaved ? 'fill-[#162D24] text-[#162D24]' : ''}`} />
+                  <BookmarkCheck className={`w-5 h-5 ${isSaved ? 'fill-[#162D24] text-[#162D24]' : ''}`} />
+                  <span className="text-xs font-semibold text-neutral-600">{isSaved ? 'Tersimpan' : 'Simpan'}</span>
                 </button>
 
                 <button
                   onClick={handleShare}
-                  className="hover:scale-110 transition-transform cursor-pointer text-neutral-600 hover:text-[#162D24]"
+                  className="hover:scale-105 transition-transform cursor-pointer text-neutral-600 hover:text-[#162D24]"
                   title="Bagikan"
                 >
                   <Share2 className="w-5 h-5" />
@@ -198,13 +220,13 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
                 <button
                   onClick={() => onToggleSave(product.id)}
-                  className={`px-5 py-2 rounded-full text-xs font-bold transition-all shadow-xs cursor-pointer ${
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all shadow-xs cursor-pointer ${
                     isSaved
                       ? 'bg-[#162D24] text-white ring-2 ring-[#8EA89D]'
                       : 'bg-[#1E3A2F] hover:bg-[#162D24] text-white'
                   }`}
                 >
-                  {isSaved ? 'Saved ✓' : 'Save Outfit'}
+                  {isSaved ? 'Disimpan ✓' : 'Simpan'}
                 </button>
               </div>
             </div>
@@ -213,7 +235,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             <div className="space-y-2">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="px-3 py-1 rounded-full bg-[#EFEFEA] text-[10px] font-bold text-[#162D24] uppercase tracking-wider">
-                  {product.sellerType === 'community_preloved' ? 'Preloved Komunitas' : 'UMKM Lokal'}
+                  {product.sellerType === 'community_preloved' ? 'Preloved Komunitas' : product.sellerType === 'collab_mitra' ? 'Collab Mitra' : 'UMKM Lokal'}
                 </span>
                 <span className="px-3 py-1 rounded-full bg-[#EFEFEA] text-[10px] font-bold text-neutral-600 uppercase tracking-wider">
                   Kategori: {product.category.replace('_', ' ')}
@@ -436,23 +458,33 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
             {/* Primary Action Buttons */}
             <div className="pt-2 flex flex-col sm:flex-row gap-3">
-              {onOpenCheckout && (
+              {product.externalLink ? (
+                <>
+                  <button
+                    onClick={handleOpenExternalShop}
+                    className="flex-1 py-4 px-6 rounded-2xl bg-[#162D24] hover:bg-[#203D31] text-white font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer"
+                  >
+                    <ExternalLink className="w-4 h-4 text-[#8EA89D]" />
+                    <span>Beli di Toko / Shopee / Tokped</span>
+                  </button>
+
+                  <button
+                    onClick={handleVisitSite}
+                    className="py-4 px-6 rounded-2xl bg-[#FAF9F5] hover:bg-[#EFECE6] border border-[#162D24] text-[#162D24] font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
+                  >
+                    <MessageCircle className="w-4 h-4 text-[#2D5A47]" />
+                    <span>Chat WhatsApp</span>
+                  </button>
+                </>
+              ) : (
                 <button
-                  onClick={() => onOpenCheckout(product)}
+                  onClick={handleVisitSite}
                   className="flex-1 py-4 px-6 rounded-2xl bg-[#162D24] hover:bg-[#203D31] text-white font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2.5 transition-all shadow-lg cursor-pointer"
                 >
-                  <ShieldCheck className="w-4 h-4 text-[#8EA89D]" />
-                  <span>Beli Sekarang (Garansi Escrow)</span>
+                  <MessageCircle className="w-4 h-4 text-[#8EA89D]" />
+                  <span>Pesan Sekarang via WhatsApp</span>
                 </button>
               )}
-
-              <button
-                onClick={handleVisitSite}
-                className="py-4 px-6 rounded-2xl bg-[#FAF9F5] hover:bg-[#EFECE6] border border-[#162D24] text-[#162D24] font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all cursor-pointer"
-              >
-                <MessageSquare className="w-4 h-4 text-[#162D24]" />
-                <span>Chat Penjual</span>
-              </button>
             </div>
           </div>
         </div>
@@ -488,6 +520,22 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
           </div>
         )}
       </div>
+
+      {/* Store Profile Modal with Story UMKM (Ala IG) */}
+      <StoreProfileModal
+        isOpen={isStoreModalOpen}
+        onClose={() => setIsStoreModalOpen(false)}
+        store={getStoreProfileByNameOrId(product.sellerName)}
+        onShowToast={onShowToast}
+      />
+
+      {/* Comments Modal */}
+      <CommentsModal
+        isOpen={isCommentsModalOpen}
+        onClose={() => setIsCommentsModalOpen(false)}
+        postId={product.id}
+        postTitle={product.title}
+      />
     </div>
   );
 };
