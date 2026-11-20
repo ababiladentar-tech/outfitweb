@@ -392,11 +392,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             </div>
 
             {/* Confirm CTA matching Figma */}
-            <div className="pt-6 flex items-center justify-center relative">
+            <div className="pt-6 flex items-center justify-between gap-4">
               <button
                 type="button"
                 onClick={handlePrev}
-                className="absolute left-0 text-xs text-neutral-400 hover:text-white underline cursor-pointer"
+                className="text-xs text-neutral-400 hover:text-white underline cursor-pointer px-2 py-1 shrink-0"
               >
                 Previous
               </button>
@@ -404,7 +404,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-12 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] font-bold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer hover:scale-102"
+                className="px-8 sm:px-12 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] font-bold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer hover:scale-102"
               >
                 Confirm
               </button>
@@ -477,11 +477,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               </div>
             )}
 
-            <div className="pt-6 flex items-center justify-center relative">
+            <div className="pt-6 flex items-center justify-between gap-4">
               <button
                 type="button"
                 onClick={handlePrev}
-                className="absolute left-0 text-xs text-neutral-400 hover:text-white underline cursor-pointer"
+                className="text-xs text-neutral-400 hover:text-white underline cursor-pointer px-2 py-1 shrink-0"
               >
                 Previous
               </button>
@@ -489,7 +489,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-12 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] font-bold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer hover:scale-102"
+                className="px-8 sm:px-12 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] font-bold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer hover:scale-102"
               >
                 Confirm
               </button>
@@ -534,11 +534,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               ))}
             </div>
 
-            <div className="pt-6 flex items-center justify-center relative">
+            <div className="pt-6 flex items-center justify-between gap-4">
               <button
                 type="button"
                 onClick={handlePrev}
-                className="absolute left-0 text-xs text-neutral-400 hover:text-white underline cursor-pointer"
+                className="text-xs text-neutral-400 hover:text-white underline cursor-pointer px-2 py-1 shrink-0"
               >
                 Previous
               </button>
@@ -546,7 +546,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-12 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] font-bold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer hover:scale-102"
+                className="px-8 sm:px-12 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] font-bold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer hover:scale-102"
               >
                 Confirm
               </button>
@@ -705,11 +705,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               </div>
             </div>
 
-            <div className="pt-4 flex items-center justify-center relative">
+            <div className="pt-4 flex items-center justify-between gap-4">
               <button
                 type="button"
                 onClick={handlePrev}
-                className="absolute left-0 text-xs text-neutral-400 hover:text-white underline cursor-pointer"
+                className="text-xs text-neutral-400 hover:text-white underline cursor-pointer px-2 py-1 shrink-0"
               >
                 Previous
               </button>
@@ -717,7 +717,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-12 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] font-bold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer hover:scale-102"
+                className="px-8 sm:px-12 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] font-bold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer hover:scale-102"
               >
                 Confirm
               </button>
@@ -833,11 +833,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               </div>
             )}
 
-            <div className="pt-6 flex items-center justify-center relative">
+            <div className="pt-6 flex items-center justify-between gap-4">
               <button
                 type="button"
                 onClick={handlePrev}
-                className="absolute left-0 text-xs text-neutral-400 hover:text-white underline cursor-pointer"
+                className="text-xs text-neutral-400 hover:text-white underline cursor-pointer px-2 py-1 shrink-0"
               >
                 Previous
               </button>
@@ -845,7 +845,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-12 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] font-bold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer hover:scale-102"
+                className="px-8 sm:px-12 py-2.5 rounded-full bg-[#8EA89D] hover:bg-[#7D988D] text-[#162D24] font-bold text-xs uppercase tracking-wider shadow-md transition-all cursor-pointer hover:scale-102"
               >
                 Confirm & Selesai
               </button>

@@ -383,12 +383,14 @@ export default function Home() {
         onStartOnboarding={() => setIsOnboardingOpen(true)}
       />
 
-      {/* Mobile Bottom Navigation Bar */}
-      <BottomNavBar
-        currentView={currentView}
-        onNavigate={(view) => setCurrentView(view)}
-        savedCount={savedPostIds.length}
-      />
+      {/* Mobile Bottom Navigation Bar (Hidden when full-screen product modals are open to prevent button overlap) */}
+      {!selectedProduct && !isCheckoutOpen && !isComparisonOpen && !isSmartSizeOpen && !isCreatePostOpen && (
+        <BottomNavBar
+          currentView={currentView}
+          onNavigate={(view) => setCurrentView(view)}
+          savedCount={savedPostIds.length}
+        />
+      )}
 
       {/* Toast Notification Container */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />

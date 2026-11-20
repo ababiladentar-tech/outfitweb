@@ -457,7 +457,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             </div>
 
             {/* Primary Action Buttons (Sticky on mobile for instant thumb purchase, inline on desktop) */}
-            <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-[#DCDAD2] shadow-2xl z-40 flex flex-row gap-2 sm:static sm:p-0 sm:bg-transparent sm:border-none sm:shadow-none sm:z-auto sm:pt-2">
+            <div className="fixed bottom-0 left-0 right-0 p-3 pb-5 sm:pb-0 bg-white/95 backdrop-blur-md border-t border-[#DCDAD2] shadow-2xl z-50 flex flex-row gap-2 sm:static sm:p-0 sm:bg-transparent sm:border-none sm:shadow-none sm:z-auto sm:pt-2">
               {product.externalLink ? (
                 <>
                   <button
