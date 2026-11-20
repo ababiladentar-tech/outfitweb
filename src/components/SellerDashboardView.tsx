@@ -45,7 +45,6 @@ export const SellerDashboardView: React.FC<SellerDashboardViewProps> = ({
   onShowToast,
   onNavigateExplore
 }) => {
-  // Tabs: Katalog & Penjualan | Tambah Produk & Link | Traffic & Viewers | Spesifikasi & Profil Toko
   const [activeTab, setActiveTab] = useState<'listings' | 'create' | 'traffic' | 'specs'>('listings');
   const [products, setProducts] = useState<UMKMProductPost[]>([]);
   const [trafficStats, setTrafficStats] = useState<StoreTrafficStats>({
@@ -56,7 +55,6 @@ export const SellerDashboardView: React.FC<SellerDashboardViewProps> = ({
     savedCount: 312
   });
 
-  // Store profile spec state
   const [storeProfile, setStoreProfile] = useState<StoreProfile>({
     id: 'seller-atelier-senja',
     name: 'Atelier Senja',
@@ -76,7 +74,6 @@ export const SellerDashboardView: React.FC<SellerDashboardViewProps> = ({
     externalShopUrl: 'https://shopee.co.id'
   });
 
-  // New Product Listing Form State
   const [title, setTitle] = useState('');
   const [sellerType, setSellerType] = useState<SellerType>('umkm');
   const [sellerName, setSellerName] = useState('Atelier Senja');
@@ -96,7 +93,6 @@ export const SellerDashboardView: React.FC<SellerDashboardViewProps> = ({
   const [fitType, setFitType] = useState<FitPreferenceType>('regular');
   const [imageUrl, setImageUrl] = useState('https://images.unsplash.com/photo-1551803091-e20673f15770?auto=format&fit=crop&w=800&q=80');
 
-  // Garment Measurements State (CM)
   const [isOneOfAKind, setIsOneOfAKind] = useState(false);
   const [sizeLabel, setSizeLabel] = useState('Size M (Fit Reguler)');
   const [chestBustCm, setChestBustCm] = useState<number>(98);
@@ -175,7 +171,6 @@ export const SellerDashboardView: React.FC<SellerDashboardViewProps> = ({
 
     onShowToast('Produk dan link berhasil diterbitkan ke Katalog Penjualan!');
     setActiveTab('listings');
-    // Reset form
     setTitle('');
     setDescription('');
     setExternalProductLink('');
@@ -599,7 +594,7 @@ export const SellerDashboardView: React.FC<SellerDashboardViewProps> = ({
               {/* Cerita Kenapa Buka Akun UMKM (Mirip IG Story) */}
               <div className="sm:col-span-2 p-5 rounded-2xl bg-[#FFF8E6] border border-[#F0DFB0] space-y-2">
                 <label className="text-xs font-bold block text-amber-900">
-                  ✨ Cerita Kami: Mengapa Membuka Akun Toko di Outfitly? (Story UMKM ala IG)
+                  Cerita Kami: Mengapa Bergabung di Outfitly (Kisah Toko UMKM)
                 </label>
                 <p className="text-[11px] text-neutral-600">
                   Cerita ini akan ditampilkan kepada pembeli saat mereka membuka profil tokomu. Tuliskan latar belakang, misi karya lokal, dan dedikasimu.

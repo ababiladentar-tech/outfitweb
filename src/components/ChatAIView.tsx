@@ -6,7 +6,6 @@ import { INITIAL_MARKETPLACE_PRODUCTS } from '@/data/umkm-products';
 import { getStoredWardrobe } from '@/data/wardrobe-store';
 import { 
   ArrowUp, 
-  Sparkles, 
   Download, 
   Home, 
   MessageSquarePlus, 
@@ -22,9 +21,9 @@ import {
   Trash2,
   Clock,
   ExternalLink,
-  Zap,
-  Crown,
-  AlertCircle
+  AlertCircle,
+  SlidersHorizontal,
+  Loader2
 } from 'lucide-react';
 
 interface ChatAIViewProps {
@@ -85,31 +84,24 @@ export const ChatAIView: React.FC<ChatAIViewProps> = ({
   const [wardrobeDropdownOpen, setWardrobeDropdownOpen] = useState(false);
   const [wardrobeList, setWardrobeList] = useState<WardrobeItem[]>([]);
   
-  // AI Mode: 'stylist_pro' (analisis menyeluruh) vs 'link_only' (mode biasa hanya kirim link-link)
   const [aiMode, setAiMode] = useState<'stylist_pro' | 'link_only'>('stylist_pro');
-
-  // Image Upload State
   const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Daily Quota Limit
   const getTodayKey = () => `outfitly_ai_usage_${new Date().toISOString().slice(0, 10)}`;
   const [usageCount, setUsageCount] = useState<number>(0);
 
-  // Chat History & Session Management
   const [sessionId, setSessionId] = useState<string>(() => `session-${Date.now()}`);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [savedSessions, setSavedSessions] = useState<ChatSession[]>([]);
 
   useEffect(() => {
-    // Load daily usage
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem(getTodayKey());
         setUsageCount(stored ? parseInt(stored, 10) : 0);
       } catch (e) {}
 
-      // Load past sessions
       try {
         const rawSessions = localStorage.getItem(CHAT_SESSIONS_STORAGE_KEY);
         if (rawSessions) {
@@ -186,13 +178,12 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
   }, []);
 
   const quickChips = [
-    '👗 Padukan baju lemariku dengan produk UMKM',
-    '✨ Outfit kasual minimalis di bawah Rp250.000',
-    '📏 Rekomendasi outer yang pas lingkar dada',
-    '🎨 Padu padan warna earth tone sawo matang'
+    'Padukan pakaian lemariku dengan produk UMKM',
+    'Outfit kasual minimalis di bawah Rp250.000',
+    'Rekomendasi outer pas lingkar dada',
+    'Padu padan warna earth tone sawo matang'
   ];
 
-  // Helper to persist current session to storage
   const saveSessionToStorage = (currentMsgs: ChatMessage[]) => {
     if (currentMsgs.length <= 1) return;
     const userMsg = currentMsgs.find(m => m.sender === 'user');
@@ -217,7 +208,6 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
     });
   };
 
-  // Start New Chat (Save previous & Reset)
   const handleStartNewChat = () => {
     if (messages.length > 1) {
       saveSessionToStorage(messages);
@@ -239,9 +229,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
     }
   };
 
-  // Open Past Session from History
   const handleOpenPastSession = (session: ChatSession) => {
-    // save current before switching
     if (messages.length > 1) {
       saveSessionToStorage(messages);
     }
@@ -253,7 +241,6 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
     }
   };
 
-  // Delete Past Session
   const handleDeleteSession = (sessIdToDelete: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = savedSessions.filter(s => s.id !== sessIdToDelete);
@@ -268,7 +255,6 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
     }
   };
 
-  // File Image Attachment Handler
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -374,12 +360,12 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
       });
 
       const data = await res.json();
-      const aiReply = data.reply || 'Halo! Ada yang bisa aku bantu untuk styling penampilanmu hari ini?';
+      const aiReply = data.reply || 'Halo, ada yang bisa dibantu untuk styling dan rekomendasi pakaian hari ini?';
       const prods: UMKMProductPost[] = data.recommendedProducts || [];
 
       typeTextStream(aiReply, prods);
     } catch (err) {
-      typeTextStream('Halo! Ada yang bisa aku bantu seputar rekomendasi outfit UMKM dan thrift hari ini? 😊', []);
+      typeTextStream('Halo, ada yang bisa dibantu seputar rekomendasi outfit UMKM dan kurasi thrift hari ini?', []);
     }
   };
 
@@ -403,7 +389,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
 
   return (
     <div className="flex h-[calc(100vh-80px)] w-full bg-[#F7F6F2] overflow-hidden relative">
-      {/* 1. Slim Left Icon Sidebar (Desktop Only, Hidden on Mobile for Full Width) */}
+      {/* Left Sidebar */}
       <aside className="hidden md:flex w-14 sm:w-16 bg-[#8EA89D] flex-col items-center justify-between py-6 text-[#162D24] shadow-md z-20 shrink-0 select-none">
         <div className="flex flex-col items-center gap-6">
           {/* Home Icon */}
@@ -476,20 +462,20 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
         </div>
       </aside>
 
-      {/* 2. Main Pure AI Chat View */}
+      {/* Chat Container */}
       <div className="flex-1 flex flex-col justify-between overflow-hidden relative">
         {/* Top Minimal Header */}
         <div className="min-h-14 py-2 px-4 sm:px-6 flex flex-wrap items-center justify-between text-[#162D24] select-none border-b border-[#E5E0D5] bg-white shrink-0 gap-3">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-xl bg-[#162D24] text-white flex items-center justify-center shrink-0">
-              <Sparkles className="w-4 h-4 text-[#8EA89D]" />
+              <Compass className="w-4 h-4 text-[#8EA89D]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-sm font-serif font-bold text-[#162D24] leading-tight">
                   Outfitly Stylist
                 </h2>
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-emerald-500" title="Aktif" />
               </div>
               <p className="text-[10px] text-neutral-400">
                 Konsultan Gaya Personal & Rekomendasi Busana Lokal
@@ -497,12 +483,12 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
             </div>
           </div>
 
-          {/* Mode AI Switcher: Mode Cepat (Link-Only) vs Stylist Pro */}
+          {/* Mode Switcher: Mode Ringkas vs Konsultasi Lengkap */}
           <div className="flex items-center bg-[#FAF9F5] p-1 rounded-xl border border-[#DDD8CC] text-xs">
             <button
               onClick={() => {
                 setAiMode('link_only');
-                if (onShowToast) onShowToast('Mode Cepat (Link-Only) aktif.');
+                if (onShowToast) onShowToast('Mode Ringkas (Tautan) aktif.');
               }}
               className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 aiMode === 'link_only'
@@ -510,14 +496,14 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
                   : 'text-neutral-500 hover:text-[#162D24]'
               }`}
             >
-              <Zap className="w-3 h-3 text-amber-400" />
-              <span>Mode Cepat (Link-Only)</span>
+              <ExternalLink className="w-3 h-3 text-[#8EA89D]" />
+              <span>Mode Ringkas (Tautan)</span>
             </button>
 
             <button
               onClick={() => {
                 setAiMode('stylist_pro');
-                if (onShowToast) onShowToast('Mode Stylist Pro aktif.');
+                if (onShowToast) onShowToast('Mode Konsultasi Lengkap aktif.');
               }}
               className={`px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                 aiMode === 'stylist_pro'
@@ -525,8 +511,8 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
                   : 'text-neutral-500 hover:text-[#162D24]'
               }`}
             >
-              <Crown className="w-3 h-3 text-[#8EA89D]" />
-              <span>Stylist Pro</span>
+              <SlidersHorizontal className="w-3 h-3 text-[#8EA89D]" />
+              <span>Konsultasi Lengkap</span>
             </button>
           </div>
 
@@ -620,10 +606,9 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
                     </div>
                   </div>
                 ) : (
-                  /* AI Message Bubble */
                   <div className="flex items-start gap-3 animate-fadeIn">
                     <div className="w-8 h-8 rounded-full bg-[#162D24] text-white flex items-center justify-center shrink-0 mt-1 shadow-xs">
-                      <Sparkles className="w-4 h-4 text-[#8EA89D]" />
+                      <Compass className="w-4 h-4 text-[#8EA89D]" />
                     </div>
 
                     <div className="flex-1 max-w-2xl space-y-3">
@@ -683,7 +668,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
             {isTyping && streamedText && (
               <div className="flex items-start gap-3 animate-fadeIn">
                 <div className="w-8 h-8 rounded-full bg-[#162D24] text-white flex items-center justify-center shrink-0 mt-1 shadow-xs">
-                  <Sparkles className="w-4 h-4 text-[#8EA89D]" />
+                  <Compass className="w-4 h-4 text-[#8EA89D]" />
                 </div>
                 <div className="flex-1 max-w-2xl bg-white border border-[#E0DBD0] rounded-2xl rounded-tl-xs p-4 sm:p-5 text-xs sm:text-sm text-[#162D24] shadow-xs leading-relaxed">
                   {formatStylistText(streamedText)}
@@ -692,14 +677,14 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
               </div>
             )}
 
-            {/* Typing Spinner */}
+            {/* Typing Indicator */}
             {isTyping && !streamedText && (
               <div className="flex items-center gap-2.5 text-xs text-neutral-500 font-medium pl-11 py-2">
-                <Sparkles className="w-4 h-4 animate-spin text-[#8EA89D]" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#8EA89D]" />
                 <span>
                   {aiMode === 'link_only' 
-                    ? 'Sedang mencari link produk cepat...' 
-                    : 'Stylist sedang meracik kurasi & analisis fitting cm...'}
+                    ? 'Sedang mencari tautan produk...' 
+                    : 'Stylist sedang meracik kurasi dan analisis fitting cm...'}
                 </span>
               </div>
             )}
@@ -708,7 +693,7 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
           </div>
         </div>
 
-        {/* 3. Floating Bottom Input Bar (Clean & Focused, with mobile bottom padding) */}
+        {/* Input Bar */}
         <div className="bg-gradient-to-t from-[#F7F6F2] via-[#F7F6F2] to-transparent pt-2 pb-20 md:pb-5 px-3 sm:px-6 shrink-0">
           <div className="max-w-3xl mx-auto space-y-2">
             {/* Limit Warning Notice if Quota Expired */}
@@ -852,14 +837,14 @@ Kamu bisa menanyakan padu-padan baju di lemarimu, rekomendasi busana UMKM & prel
             </form>
 
             <div className="flex items-center justify-between text-[10px] text-neutral-400 px-1">
-              <span>{aiMode === 'link_only' ? '⚡ Mode Cepat: Fokus daftar link produk & harga' : '✨ Stylist Pro: Analisis sentimeter & paduan gaya'}</span>
+              <span>{aiMode === 'link_only' ? 'Mode Ringkas: Daftar tautan produk & harga' : 'Konsultasi Lengkap: Analisis sentimeter & paduan siluet'}</span>
               <span>Outfitly Stylist • Produk Lokal Indonesia</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 4. Chat History Drawer / Modal */}
+      {/* History Drawer */}
       {isHistoryOpen && (
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex justify-end animate-fadeIn">
           <div className="w-full max-w-sm bg-white h-full shadow-2xl flex flex-col justify-between animate-slideInRight">

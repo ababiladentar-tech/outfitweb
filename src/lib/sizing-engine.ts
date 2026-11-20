@@ -67,7 +67,7 @@ export function calculateSizeCompatibility(
     const checks: SizeCompatibilityResult['detailedChecks'] = [];
     let criticalMismatch = false;
 
-    // 1. CHEST / BUST CHECK
+    // Chest and bust comparison
     if (garment.chestBustCm && !isPantsOrSkirt) {
       const diff = garment.chestBustCm - effectiveMeasurements.chestBustCm;
       const minEase = easeTarget.chest[0];
@@ -117,7 +117,7 @@ export function calculateSizeCompatibility(
       }
     }
 
-    // 2. WAIST CHECK
+    // Waist comparison
     if (garment.waistCm) {
       const diff = garment.waistCm - effectiveMeasurements.waistCm;
       const minEase = easeTarget.waist[0];
@@ -166,7 +166,7 @@ export function calculateSizeCompatibility(
       }
     }
 
-    // 3. SHOULDER CHECK
+    // Shoulder comparison
     if (garment.shoulderWidthCm && effectiveMeasurements.shoulderWidthCm) {
       const diff = garment.shoulderWidthCm - effectiveMeasurements.shoulderWidthCm;
       checks.push({

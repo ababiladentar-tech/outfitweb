@@ -86,38 +86,30 @@ export const OutfitBuilderView: React.FC<OutfitBuilderViewProps> = ({
   onShowToast,
   onAskAIToReview
 }) => {
-  // Mode selection
   const [mode, setMode] = useState<OutfitBuilderMode>(
     initialPreselectedItems.length > 0 ? 'closet' : 'shop'
   );
 
-  // Preference Controls
   const [occasion, setOccasion] = useState('campus');
   const [styleVibe, setStyleVibe] = useState('minimalist');
   const [maxBudget, setMaxBudget] = useState(350000);
   const [weather, setWeather] = useState<OutfitWeather>('moderate');
 
-  // Active outfit state
   const [activeOutfit, setActiveOutfit] = useState<SavedOutfit | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Saved outfits drawer / tab
   const [savedOutfits, setSavedOutfits] = useState<SavedOutfit[]>([]);
   const [activeTab, setActiveTab] = useState<'builder' | 'saved_collection'>('builder');
 
-  // Slot Swapper Modal state
   const [swapModalOpen, setSwapModalOpen] = useState(false);
   const [swappingSlotIndex, setSwappingSlotIndex] = useState<number | null>(null);
 
-  // Save outfit dialog state
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [customTitle, setCustomTitle] = useState('');
 
-  // Data sources
   const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
   const [marketplaceProducts, setMarketplaceProducts] = useState<UMKMProductPost[]>([]);
 
-  // Load all initial data
   useEffect(() => {
     const loadAll = () => {
       const w = getStoredWardrobe(currentUserId);
@@ -139,7 +131,6 @@ export const OutfitBuilderView: React.FC<OutfitBuilderViewProps> = ({
     };
   }, [currentUserId]);
 
-  // Initial generation on first mount
   useEffect(() => {
     if (marketplaceProducts.length > 0 || wardrobeItems.length > 0) {
       if (!activeOutfit) {
@@ -168,13 +159,11 @@ export const OutfitBuilderView: React.FC<OutfitBuilderViewProps> = ({
     }, 300);
   };
 
-  // Open slot swapper
   const handleOpenSwap = (index: number) => {
     setSwappingSlotIndex(index);
     setSwapModalOpen(true);
   };
 
-  // Execute slot replacement
   const handleSelectReplacement = (
     item: WardrobeItem | UMKMProductPost, 
     sourceType: 'wardrobe' | 'marketplace'
@@ -188,7 +177,6 @@ export const OutfitBuilderView: React.FC<OutfitBuilderViewProps> = ({
     }
   };
 
-  // Save active outfit to collection
   const handleSaveCurrentOutfit = () => {
     if (!activeOutfit) return;
     const toSave = {
@@ -201,7 +189,6 @@ export const OutfitBuilderView: React.FC<OutfitBuilderViewProps> = ({
     onShowToast(`Outfit "${toSave.title}" berhasil disimpan ke koleksi!`);
   };
 
-  // Delete saved outfit
   const handleDeleteSaved = (id: string, title: string) => {
     if (confirm(`Hapus outfit "${title}" dari koleksi tersimpan?`)) {
       deleteSavedOutfit(id);
@@ -209,7 +196,6 @@ export const OutfitBuilderView: React.FC<OutfitBuilderViewProps> = ({
     }
   };
 
-  // Load a saved outfit into builder
   const handleLoadSavedOutfit = (outfit: SavedOutfit) => {
     setActiveOutfit(outfit);
     setCustomTitle(outfit.title);
@@ -217,7 +203,6 @@ export const OutfitBuilderView: React.FC<OutfitBuilderViewProps> = ({
     onShowToast(`Outfit "${outfit.title}" dimuat ke workspace.`);
   };
 
-  // Get replacement candidates for the active slot being swapped
   const getSwapCandidates = () => {
     if (!activeOutfit || swappingSlotIndex === null) return { wardrobe: [], marketplace: [] };
     const currentSlot = activeOutfit.slots[swappingSlotIndex];
@@ -225,7 +210,6 @@ export const OutfitBuilderView: React.FC<OutfitBuilderViewProps> = ({
 
     const slotType = currentSlot.slotType;
 
-    // Filter wardrobe items matching this slot
     const wCandidates = wardrobeItems.filter(i => {
       if (slotType === 'top') return i.category === 'tops';
       if (slotType === 'bottom') return i.category === 'bottoms';
@@ -236,7 +220,6 @@ export const OutfitBuilderView: React.FC<OutfitBuilderViewProps> = ({
       return i.category === 'accessories';
     });
 
-    // Filter marketplace products matching this slot
     const mCandidates = marketplaceProducts.filter(p => {
       if (!p.isAvailable || p.stockCount === 0) return false;
       if (slotType === 'top') return ['top', 'casual_outfit', 'hijab'].includes(p.category);
@@ -673,7 +656,7 @@ export const OutfitBuilderView: React.FC<OutfitBuilderViewProps> = ({
                       {mode !== 'closet' && maxBudget && (
                         <p className="text-[10px] text-neutral-500">
                           {activeOutfit.totalPrice <= maxBudget 
-                            ? `✓ Berada dalam target budget Rp ${maxBudget.toLocaleString('id-ID')} (Sisa Rp ${(maxBudget - activeOutfit.totalPrice).toLocaleString('id-ID')})`
+                            ? `Sesuai target budget Rp ${maxBudget.toLocaleString('id-ID')} (Sisa Rp ${(maxBudget - activeOutfit.totalPrice).toLocaleString('id-ID')})`
                             : `Melebihi budget sebesar Rp ${(activeOutfit.totalPrice - maxBudget).toLocaleString('id-ID')}`}
                         </p>
                       )}

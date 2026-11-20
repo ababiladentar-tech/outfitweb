@@ -67,7 +67,6 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
   const [likedProductIds, setLikedProductIds] = useState<string[]>([]);
   const [followedStoreIds, setFollowedStoreIds] = useState<string[]>([]);
 
-  // 1. Centralized Filter States
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSellerType, setSelectedSellerType] = useState<string>('all');
   const [selectedCondition, setSelectedCondition] = useState<string>('all');
@@ -82,7 +81,6 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
   const [sortBy, setSortBy] = useState<'relevance' | 'smart_fit' | 'price_low' | 'price_high' | 'popular' | 'newest'>('relevance');
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState<boolean>(false);
 
-  // Load products, community posts & store follows
   useEffect(() => {
     const refreshAll = () => {
       setProducts(getStoredProducts());
@@ -119,7 +117,6 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
     setIsStoreModalOpen(true);
   };
 
-  // Category list
   const categories = [
     { id: 'all', label: 'All Items' },
     { id: 'top', label: 'Tops & Kemeja' },
@@ -132,7 +129,6 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
     { id: 'hijab', label: 'Hijab Chic' }
   ];
 
-  // Seller Type tabs - "Vintage Resale" diganti "Collab Mitra"
   const sellerTypes = [
     { id: 'all', label: 'Semua Sumber' },
     { id: 'umkm', label: 'UMKM Brand Baru' },
@@ -140,7 +136,6 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
     { id: 'reseller', label: 'Collab Mitra' }
   ];
 
-  // Condition options
   const conditions = [
     { id: 'all', label: 'Semua Kondisi' },
     { id: 'new', label: 'Brand New (Baru)' },
@@ -150,10 +145,8 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
     { id: 'has_defects', label: 'Ada Defek Tertera' }
   ];
 
-  // Standard sizes
   const standardSizes = ['all', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'All Size'];
 
-  // Style filters
   const styles = [
     { id: 'all', label: 'Semua Gaya' },
     { id: 'casual', label: 'Casual' },
@@ -164,7 +157,6 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
     { id: 'sporty', label: 'Sporty' }
   ];
 
-  // Color filters
   const colors = [
     { id: 'all', label: 'Semua Warna', hex: '#FFFFFF' },
     { id: 'black', label: 'Hitam', hex: '#1C1C1C' },
@@ -176,7 +168,6 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
     { id: 'neutral', label: 'Netral / Krem', hex: '#FAF0E6' }
   ];
 
-  // Price Tiers
   const priceTiers = [
     { id: 'all', label: 'Semua Harga' },
     { id: 'under_100', label: '< Rp 100.000', min: 0, max: 100000 },
@@ -214,14 +205,11 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
     setSortBy('relevance');
   };
 
-  // 2. Interconnected Filter Pipeline
   const filteredProducts = useMemo(() => {
     let list: UMKMProductPost[] = [...products];
 
-    // Exclude moderated products
     list = list.filter(p => !p.isModerated);
 
-    // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       list = list.filter((post) => {
@@ -235,44 +223,36 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
       });
     }
 
-    // Seller type
     if (selectedSellerType !== 'all') {
       list = list.filter((p) => p.sellerType === selectedSellerType);
     }
 
-    // Condition
     if (selectedCondition !== 'all') {
       list = list.filter((p) => p.condition === selectedCondition);
     }
 
-    // Category
     if (selectedCategory !== 'all') {
       list = list.filter((p) => p.category === selectedCategory);
     }
 
-    // Style
     if (selectedStyle !== 'all') {
       list = list.filter((p) => p.style === selectedStyle);
     }
 
-    // Color
     if (selectedColor !== 'all') {
       list = list.filter((p) => p.colorFamily === selectedColor);
     }
 
-    // Standard Size Label
     if (selectedSizeLabel !== 'all') {
       list = list.filter((p) => 
         p.availableSizes.some((s) => s.sizeLabel.toLowerCase().includes(selectedSizeLabel.toLowerCase()))
       );
     }
 
-    // Stock availability
     if (onlyInStock) {
       list = list.filter((p) => p.isAvailable && p.stockCount > 0);
     }
 
-    // Price Tier
     if (priceTier !== 'all') {
       const tier = priceTiers.find((t) => t.id === priceTier);
       if (tier && tier.min !== undefined && tier.max !== undefined) {
@@ -280,15 +260,13 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
       }
     }
 
-    // Smart Size Compatibility Filter
     if (onlySmartFit && userProfile?.measurements) {
       list = list.filter((p) => {
         const res = calculateSizeCompatibility(p, userProfile.measurements);
-        return res.overallScore >= 70; // 70%+ match
+        return res.overallScore >= 70;
       });
     }
 
-    // Personal Profile Vibe Match
     if (matchProfile && userProfile) {
       list = list.filter((post) => {
         const matchesSkin = !post.bestForSkinTones || post.bestForSkinTones.includes(userProfile.skinTone);
@@ -297,7 +275,6 @@ export const ReferenceFeedView: React.FC<ReferenceFeedViewProps> = ({
       });
     }
 
-    // 3. Sorting
     list.sort((a, b) => {
       if (sortBy === 'smart_fit' && userProfile?.measurements) {
         const scoreA = calculateSizeCompatibility(a, userProfile.measurements).overallScore;

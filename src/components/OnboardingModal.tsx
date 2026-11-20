@@ -29,7 +29,6 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
   username,
   birthDate
 }) => {
-  // Step 1 to 6 matches Figma node 219-624 flow (Gender -> Skin Tone -> Body Shape -> Face Shape -> Color Palette -> Style Preferences)
   const [step, setStep] = useState<number>(1);
   const totalSteps = 6;
 
@@ -88,14 +87,12 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     }
   };
 
-  // 12 Primary Hues on the Interactive Color Wheel
   const colorWheelHues = [
     '#E63946', '#F4A261', '#E9C46A', '#52B788',
     '#2A9D8F', '#00B4D8', '#457B9D', '#1D3557',
     '#6A4C93', '#8338EC', '#D90429', '#264653'
   ];
 
-  // Curated Preset Palette Themes
   const presetThemes = [
     { name: 'Warm Earthy', colors: ['#5C3826', '#8C6D58', '#C5A086', '#D7C4B7', '#FAF0E6'] },
     { name: 'Sage & Forest', colors: ['#162D24', '#2F4F42', '#52B788', '#8EA89D', '#EFEFEA'] },
@@ -126,7 +123,6 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
     }
   };
 
-  // Generate SVG Pie Slices for the Interactive Color Wheel
   const pieSlices = colorWheelHues.map((hex, i) => {
     const startAngle = (i * 30 - 90) * (Math.PI / 180);
     const endAngle = ((i + 1) * 30 - 90) * (Math.PI / 180);
@@ -422,11 +418,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             {profile.gender === 'girl' ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
                 {[
-                  { id: 'hourglass', label: 'Hourglass', tag: '⏳' },
-                  { id: 'apple', label: 'Apple', tag: '🍎' },
-                  { id: 'inverted_triangle', label: 'Inverted Triangle', tag: '🔻' },
-                  { id: 'rectangle', label: 'Rectangle', tag: '📐' },
-                  { id: 'pear', label: 'Pear', tag: '🍐' }
+                  { id: 'hourglass', label: 'Hourglass' },
+                  { id: 'apple', label: 'Apple' },
+                  { id: 'inverted_triangle', label: 'Inverted Triangle' },
+                  { id: 'rectangle', label: 'Rectangle' },
+                  { id: 'pear', label: 'Pear' }
                 ].map((item) => (
                   <div
                     key={item.id}
@@ -437,7 +433,29 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                         : 'bg-[#D6E2DC]/85 hover:bg-[#D6E2DC] text-[#162D24] font-semibold'
                     }`}
                   >
-                    <span className="text-xl">{item.tag}</span>
+                    <span className="w-6 h-6 flex items-center justify-center shrink-0">
+                      {item.id === 'hourglass' ? (
+                        <svg className="w-5 h-5 text-[#162D24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M6 3h12l-4 9 4 9H6l4-9-4-9z" />
+                        </svg>
+                      ) : item.id === 'apple' ? (
+                        <svg className="w-5 h-5 text-[#162D24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <circle cx="12" cy="12" r="8" />
+                        </svg>
+                      ) : item.id === 'inverted_triangle' ? (
+                        <svg className="w-5 h-5 text-[#162D24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                          <polygon points="4,5 20,5 12,20" />
+                        </svg>
+                      ) : item.id === 'rectangle' ? (
+                        <svg className="w-5 h-5 text-[#162D24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="5" y="3" width="14" height="18" rx="2" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-[#162D24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                          <polygon points="12,4 20,20 4,20" />
+                        </svg>
+                      )}
+                    </span>
                     <span className="text-xs sm:text-sm flex-1 text-left">{item.label}</span>
                     {profile.bodyShape === item.id ? (
                       <Check className="w-4 h-4 text-[#162D24] shrink-0" />
@@ -450,11 +468,11 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 pt-2">
                 {[
-                  { id: 'oval', label: 'Oval', tag: '🥚' },
-                  { id: 'rectangle', label: 'Rectangle', tag: '📐' },
-                  { id: 'triangle', label: 'Triangle', tag: '▲' },
-                  { id: 'trapezoid', label: 'Trapezoid', tag: '⬟' },
-                  { id: 'inverted_triangle', label: 'Inverted Triangle', tag: '🔻' }
+                  { id: 'oval', label: 'Oval' },
+                  { id: 'rectangle', label: 'Rectangle' },
+                  { id: 'triangle', label: 'Triangle' },
+                  { id: 'trapezoid', label: 'Trapezoid' },
+                  { id: 'inverted_triangle', label: 'Inverted Triangle' }
                 ].map((item) => (
                   <div
                     key={item.id}
@@ -465,7 +483,29 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                         : 'bg-[#D6E2DC]/85 hover:bg-[#D6E2DC] text-[#162D24] font-semibold'
                     }`}
                   >
-                    <span className="text-xl">{item.tag}</span>
+                    <span className="w-6 h-6 flex items-center justify-center shrink-0">
+                      {item.id === 'oval' ? (
+                        <svg className="w-5 h-5 text-[#162D24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <ellipse cx="12" cy="12" rx="7" ry="9" />
+                        </svg>
+                      ) : item.id === 'rectangle' ? (
+                        <svg className="w-5 h-5 text-[#162D24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="5" y="3" width="14" height="18" rx="2" />
+                        </svg>
+                      ) : item.id === 'triangle' ? (
+                        <svg className="w-5 h-5 text-[#162D24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                          <polygon points="12,4 20,20 4,20" />
+                        </svg>
+                      ) : item.id === 'trapezoid' ? (
+                        <svg className="w-5 h-5 text-[#162D24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                          <polygon points="7,4 17,4 20,20 4,20" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-[#162D24]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                          <polygon points="4,5 20,5 12,20" />
+                        </svg>
+                      )}
+                    </span>
                     <span className="text-xs sm:text-sm flex-1 text-left">{item.label}</span>
                     {profile.bodyShape === item.id ? (
                       <Check className="w-4 h-4 text-[#162D24] shrink-0" />
@@ -506,14 +546,14 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
 
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3 pt-1">
               {[
-                { id: 'rectangle', label: 'Rectangle', emoji: '🟨' },
-                { id: 'square', label: 'Square', emoji: '⏹' },
-                { id: 'hexagonal_straight_base', label: 'Hexagonal', emoji: '🛑' },
-                { id: 'round', label: 'Round', emoji: '⚪' },
-                { id: 'oval', label: 'Oval', emoji: '🥚' },
-                { id: 'triangle_pear', label: 'Triangle', emoji: '▲' },
-                { id: 'inverted_triangle_heart', label: 'Heart', emoji: '🤍' },
-                { id: 'diamond', label: 'Diamond', emoji: '💎' }
+                { id: 'rectangle', label: 'Rectangle' },
+                { id: 'square', label: 'Square' },
+                { id: 'hexagonal_straight_base', label: 'Hexagonal' },
+                { id: 'round', label: 'Round' },
+                { id: 'oval', label: 'Oval' },
+                { id: 'triangle_pear', label: 'Triangle' },
+                { id: 'inverted_triangle_heart', label: 'Heart' },
+                { id: 'diamond', label: 'Diamond' }
               ].map((face) => (
                 <div
                   key={face.id}
@@ -524,8 +564,40 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
                       : 'border-white/10 hover:bg-white/5'
                   }`}
                 >
-                  <div className="w-10 h-10 rounded-full bg-[#E5B58D] flex items-center justify-center text-lg mb-1 shadow-xs border border-white/20">
-                    {face.emoji}
+                  <div className="w-10 h-10 rounded-full bg-[#E5B58D]/30 flex items-center justify-center mb-1 shadow-xs border border-white/20">
+                    {face.id === 'rectangle' ? (
+                      <svg className="w-4 h-5 text-white" viewBox="0 0 20 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="2" width="14" height="20" rx="3" />
+                      </svg>
+                    ) : face.id === 'square' ? (
+                      <svg className="w-4 h-4 text-white" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="2" y="2" width="16" height="16" rx="3" />
+                      </svg>
+                    ) : face.id === 'hexagonal_straight_base' ? (
+                      <svg className="w-4 h-5 text-white" viewBox="0 0 20 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                        <polygon points="10,2 18,7 18,17 10,22 2,17 2,7" />
+                      </svg>
+                    ) : face.id === 'round' ? (
+                      <svg className="w-4 h-4 text-white" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="10" cy="10" r="8" />
+                      </svg>
+                    ) : face.id === 'oval' ? (
+                      <svg className="w-4 h-5 text-white" viewBox="0 0 20 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <ellipse cx="10" cy="12" rx="7" ry="10" />
+                      </svg>
+                    ) : face.id === 'triangle_pear' ? (
+                      <svg className="w-4 h-5 text-white" viewBox="0 0 20 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                        <polygon points="10,3 18,21 2,21" />
+                      </svg>
+                    ) : face.id === 'inverted_triangle_heart' ? (
+                      <svg className="w-4 h-5 text-white" viewBox="0 0 20 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                        <path d="M10 21C6 16 3 13 3 8a5 5 0 0 1 7-2 5 5 0 0 1 7 2c0 5-3 8-7 13z" />
+                      </svg>
+                    ) : (
+                      <svg className="w-4 h-5 text-white" viewBox="0 0 20 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round">
+                        <polygon points="10,2 18,12 10,22 2,12" />
+                      </svg>
+                    )}
                   </div>
                   <span className="text-[10px] font-semibold text-neutral-200 leading-tight">
                     {face.label}
@@ -755,7 +827,7 @@ export const OnboardingModal: React.FC<OnboardingModalProps> = ({
               >
                 {['casual', 'formal', 'minimalist', 'streetwear', 'old_money_smart', 'etnik_batik_modern'].every(s => profile.stylePreferences.includes(s))
                   ? 'Batal Pilih Semua'
-                  : '✓ Pilih Semua (Select All)'}
+                  : 'Pilih Semua'}
               </button>
             </div>
 

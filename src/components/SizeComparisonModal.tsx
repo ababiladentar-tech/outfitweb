@@ -104,7 +104,6 @@ export const SizeComparisonModal: React.FC<SizeComparisonModalProps> = ({
   const fitA = calculateSizeCompatibility(productA, userMeasurements, selectedSizeLabelA);
   const fitB = calculateSizeCompatibility(productB, userMeasurements, selectedSizeLabelB);
 
-  // Side-by-side comparison specification rows
   const getComparisonRows = () => {
     if (groupA === 'footwear') {
       return [
@@ -242,7 +241,6 @@ export const SizeComparisonModal: React.FC<SizeComparisonModalProps> = ({
 
   const comparisonRows = getComparisonRows();
 
-  // Natural editorial advice note (written like a senior stylist, without robotic run-on sentences)
   const renderEditorialAdvice = () => {
     if (groupA === 'footwear') {
       const insoleA = sizeChartA?.garmentLengthCm || 24;
@@ -283,7 +281,7 @@ export const SizeComparisonModal: React.FC<SizeComparisonModalProps> = ({
             {userMeasurements?.waistCm ? (
               `Dengan lingkar pinggangmu ${userMeasurements.waistCm} cm, pilih ukuran yang menyisakan kelonggaran 2 sampai 4 cm untuk kenyamanan bernapas dan duduk dalam waktu lama.`
             ) : (
-              'Bahan non-stretch denim membutuhkan kelonggaran 2–3 cm lebih banyak dibanding katun twill stretch agar tetap nyaman saat bergerak aktif.'
+              'Bahan non-stretch denim membutuhkan kelonggaran 2 - 3 cm lebih banyak dibanding katun twill stretch agar tetap nyaman saat bergerak aktif.'
             )}
           </p>
         </div>

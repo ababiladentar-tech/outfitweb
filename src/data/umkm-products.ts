@@ -1,7 +1,7 @@
 import { UMKMProductPost } from '../types';
 
 export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
-  // 1. UMKM Brand: Pena Leather Works (Yogyakarta)
+  // Pena Leather Works (Yogyakarta)
   {
     id: 'prod-01',
     sellerId: 'seller-umkm-01',
@@ -51,7 +51,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-03-15T10:00:00Z'
   },
 
-  // 2. UMKM Brand: Atelier Senja (Bandung)
+  // Atelier Senja (Bandung)
   {
     id: 'prod-02',
     sellerId: 'seller-umkm-02',
@@ -128,7 +128,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-03-20T11:30:00Z'
   },
 
-  // 3. Community Preloved: Rania Thrift Closet (Jakarta Selatan)
+  // Rania Thrift Closet (Jakarta Selatan)
   {
     id: 'prod-03',
     sellerId: 'seller-user-01',
@@ -183,7 +183,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-04-01T09:15:00Z'
   },
 
-  // 4. UMKM Brand: Modest Hijab Chic (Surabaya)
+  // Modest Hijab Chic (Surabaya)
   {
     id: 'prod-04',
     sellerId: 'seller-umkm-03',
@@ -232,7 +232,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-03-25T14:20:00Z'
   },
 
-  // 5. Community Preloved: Dimas Thrift Room (Semarang)
+  // Dimas Thrift Room (Semarang)
   {
     id: 'prod-05',
     sellerId: 'seller-user-02',
@@ -287,7 +287,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-04-02T16:45:00Z'
   },
 
-  // 6. Reseller Partner: Urban Heritage Resale (Jakarta Barat)
+  // Urban Heritage Resale (Jakarta Barat)
   {
     id: 'prod-06',
     sellerId: 'seller-reseller-01',
@@ -341,7 +341,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-03-28T08:10:00Z'
   },
 
-  // 7. UMKM Brand: Rinjani Batik Craft (Pekalongan)
+  // Rinjani Batik Craft (Pekalongan)
   {
     id: 'prod-07',
     sellerId: 'seller-umkm-04',
@@ -417,7 +417,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-03-30T10:00:00Z'
   },
 
-  // 8. Community Preloved: Tiara Thrift (Yogyakarta)
+  // Tiara Thrift (Yogyakarta)
   {
     id: 'prod-08',
     sellerId: 'seller-user-03',
@@ -470,7 +470,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-04-03T12:00:00Z'
   },
 
-  // 9. UMKM Brand: Svara Footwear (Bandung)
+  // Svara Footwear (Bandung)
   {
     id: 'prod-09',
     sellerId: 'seller-umkm-05',
@@ -519,7 +519,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-03-18T13:40:00Z'
   },
 
-  // 10. Community Preloved: Bella Wardrobe (Surabaya)
+  // Bella Wardrobe (Surabaya)
   {
     id: 'prod-10',
     sellerId: 'seller-user-04',
@@ -573,7 +573,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-04-04T15:10:00Z'
   },
 
-  // 11. UMKM Brand: Svara Footwear (Bandung) — Pembanding Sepatu
+  // Svara Footwear (Bandung), pembanding sepatu
   {
     id: 'prod-11',
     sellerId: 'seller-umkm-05',
@@ -622,7 +622,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-04-05T10:00:00Z'
   },
 
-  // 12. UMKM Brand: Pena Leather Works (Yogyakarta) — Pembanding Tas
+  // Pena Leather Works (Yogyakarta), pembanding tas
   {
     id: 'prod-12',
     sellerId: 'seller-umkm-01',
@@ -671,7 +671,7 @@ export const INITIAL_MARKETPLACE_PRODUCTS: UMKMProductPost[] = [
     createdAt: '2026-04-05T12:00:00Z'
   },
 
-  // 13. UMKM Brand: Atelier Senja (Bandung) — Pembanding Bawahan
+  // Atelier Senja (Bandung), pembanding bawahan
   {
     id: 'prod-13',
     sellerId: 'seller-umkm-02',

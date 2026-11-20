@@ -140,7 +140,7 @@ export default function Home() {
       : [...savedPostIds, id];
 
     updateSavedPosts(updated);
-    showToast(isCurrentlySaved ? 'Dihapus dari outfit tersimpan' : 'Disimpan ke favorit! ❤️');
+    showToast(isCurrentlySaved ? 'Dihapus dari outfit tersimpan' : 'Disimpan ke outfit tersimpan');
   };
 
   // Handle Size Comparison Trigger

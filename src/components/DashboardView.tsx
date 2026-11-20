@@ -88,14 +88,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     );
   }
 
-  // Derive personalized recommendations based on profile
   const recommendedItems = OFTEA_POSTS.filter(p => {
     const matchSkin = !p.bestForSkinTones || p.bestForSkinTones.includes(userProfile.skinTone);
     const matchBody = !p.bestForBodyShapes || p.bestForBodyShapes.includes(userProfile.bodyShape);
     return matchSkin || matchBody;
   }).slice(0, 6);
 
-  // Thoughtful, human Indonesian styling palette analysis
   const skinToneData = userProfile.skinTone === 'cool'
     ? { 
         title: 'Cool Undertone (Rona Sejuk Kebiruan)', 
@@ -140,7 +138,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const hasCustomMeasurements = Boolean(userProfile.measurements?.chestBustCm && userProfile.measurements?.waistCm);
 
-  // Human tailoring silhouette guidance
   const getBodyShapeDetails = () => {
     const shape = (userProfile.bodyShape || '').toLowerCase();
     if (shape.includes('hourglass')) {
@@ -179,7 +176,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         neckline: 'Kerah V-neck terbuka atau open notch collar.'
       };
     }
-    // Rectangle / Trapezoid default
     return {
       label: 'Persegi / Atletis (Rectangle)',
       silhouetteRule: 'Menciptakan dimensi visual dan ilusi lekuk melalui teknik layering dan permainan potongan baju.',

@@ -27,7 +27,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
   onReference,
   onOpenOnboarding
 }) => {
-  // Curated High-Definition, Crystal-Clear Fashion Models that cycle dynamically with artisan specs
   const heroModels: HeroModelItem[] = [
     {
       id: 'model-1',

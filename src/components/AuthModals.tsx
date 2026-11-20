@@ -31,7 +31,6 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
     birthYear: '02'
   });
 
-  // Password validation checks (Min 8 chars, Capital letter, Number, Special char)
   const hasMinLength = formData.password.length >= 8;
   const hasCapital = /[A-Z]/.test(formData.password);
   const hasNumber = /[0-9]/.test(formData.password);
@@ -40,7 +39,6 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
 
   if (!isOpen) return null;
 
-  // Direct Social Sign-In (Instant 1-Click for Google, X, Facebook)
   const handleDirectSocialLogin = (provider: 'google' | 'facebook' | 'twitter') => {
     if (provider === 'google') {
       onAuthSuccess({
@@ -281,28 +279,28 @@ export const AuthModals: React.FC<AuthModalsProps> = ({
                   <div className="grid grid-cols-2 gap-1.5">
                     <div className={`flex items-center gap-1.5 ${hasMinLength ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}`}>
                       <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasMinLength ? 'bg-emerald-500 text-[#162D24]' : 'bg-white/10'}`}>
-                        {hasMinLength ? '✓' : '•'}
+                        {hasMinLength ? <Check className="w-2.5 h-2.5" /> : '•'}
                       </span>
                       <span>Min. 8 Karakter</span>
                     </div>
 
                     <div className={`flex items-center gap-1.5 ${hasCapital ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}`}>
                       <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasCapital ? 'bg-emerald-500 text-[#162D24]' : 'bg-white/10'}`}>
-                        {hasCapital ? '✓' : '•'}
+                        {hasCapital ? <Check className="w-2.5 h-2.5" /> : '•'}
                       </span>
                       <span>Huruf Kapital (A-Z)</span>
                     </div>
 
                     <div className={`flex items-center gap-1.5 ${hasNumber ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}`}>
                       <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasNumber ? 'bg-emerald-500 text-[#162D24]' : 'bg-white/10'}`}>
-                        {hasNumber ? '✓' : '•'}
+                        {hasNumber ? <Check className="w-2.5 h-2.5" /> : '•'}
                       </span>
                       <span>Angka (0-9)</span>
                     </div>
 
                     <div className={`flex items-center gap-1.5 ${hasSpecial ? 'text-emerald-400 font-semibold' : 'text-neutral-400'}`}>
                       <span className={`w-3.5 h-3.5 rounded-full flex items-center justify-center text-[9px] ${hasSpecial ? 'bg-emerald-500 text-[#162D24]' : 'bg-white/10'}`}>
-                        {hasSpecial ? '✓' : '•'}
+                        {hasSpecial ? <Check className="w-2.5 h-2.5" /> : '•'}
                       </span>
                       <span>Karakter Khusus (!@#$)</span>
                     </div>

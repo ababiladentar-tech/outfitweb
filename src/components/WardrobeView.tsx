@@ -70,14 +70,10 @@ export const WardrobeView: React.FC<WardrobeViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'name' | 'category'>('newest');
 
-  // Multi-select for outfit creation
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
-
-  // Add / Edit Modal States
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<WardrobeItem | null>(null);
 
-  // Form States
   const [formData, setFormData] = useState({
     name: '',
     category: 'tops' as WardrobeCategory,
@@ -97,7 +93,6 @@ export const WardrobeView: React.FC<WardrobeViewProps> = ({
   const [formError, setFormError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load wardrobe on mount & listen to updates
   useEffect(() => {
     const loadItems = () => {
       const stored = getStoredWardrobe(currentUserId);
@@ -110,7 +105,6 @@ export const WardrobeView: React.FC<WardrobeViewProps> = ({
     return () => window.removeEventListener('outfitly_wardrobe_updated', handleUpdate);
   }, [currentUserId]);
 
-  // Handle Image File Upload (converts to persistent Base64 Data URL)
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -147,7 +141,6 @@ export const WardrobeView: React.FC<WardrobeViewProps> = ({
     reader.readAsDataURL(file);
   };
 
-  // Preset sample image handler
   const handleSelectPresetSample = async (sample: typeof PRESET_SAMPLE_PHOTOS[0]) => {
     setFormData(prev => ({
       ...prev,

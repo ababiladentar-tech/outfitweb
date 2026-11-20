@@ -151,7 +151,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
             />
             {product.isOneOfAKind && (
               <div className="absolute top-4 left-4 px-3 py-1 bg-black/70 backdrop-blur-xs text-white text-[11px] font-bold rounded-full">
-                ★ 1-of-a-kind (Hanya 1 Pcs)
+                Kurasi Tunggal (1 Pcs)
               </div>
             )}
             <button
@@ -226,7 +226,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
                       : 'bg-[#1E3A2F] hover:bg-[#162D24] text-white'
                   }`}
                 >
-                  {isSaved ? 'Disimpan ✓' : 'Simpan'}
+                  {isSaved ? 'Tersimpan' : 'Simpan'}
                 </button>
               </div>
             </div>
@@ -318,7 +318,7 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
 
               <p className="text-[11px] text-neutral-600 leading-relaxed">
                 {product.category === 'shoes'
-                  ? `Panjang insole telapak kaki ${currentSizeObj?.garmentLengthCm || 24.5} cm. Disarankan mengukur panjang telapak kaki Anda untuk memastikan sisa ruang jemari 0.5–1 cm.`
+                  ? `Panjang insole telapak kaki ${currentSizeObj?.garmentLengthCm || 24.5} cm. Disarankan mengukur panjang telapak kaki Anda untuk memastikan sisa ruang jemari 0.5 - 1 cm.`
                   : product.category === 'bag'
                   ? (product.measurementMethod || 'Dimensi tas dirancang ergonomis untuk memuat perlengkapan harian secara rapi.')
                   : fitAnalysis.summaryExplanation}
