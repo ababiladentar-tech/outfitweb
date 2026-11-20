@@ -127,18 +127,16 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
   return (
     <div className="flex flex-col w-full bg-[#EDECE6]">
-      {/* 1. HERO SECTION: Editorial Atelier with Floating Spec Pill */}
+      {/* 1. HERO SECTION: Editorial Atelier Architecture */}
       <section className="relative w-full min-h-[calc(100vh-80px)] flex items-center bg-[#EDECE6] overflow-hidden border-b border-[#DCDAD2]">
-        {/* Soft Ambient Depth Accents */}
-        <div className="absolute top-1/4 -left-32 w-80 sm:w-96 h-80 sm:h-96 rounded-full bg-[#8EA89D]/12 blur-3xl pointer-events-none" />
-        <div className="absolute bottom-8 right-8 w-72 sm:w-96 h-72 sm:h-96 rounded-full bg-[#E58B94]/10 blur-3xl pointer-events-none" />
-
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 w-full grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-8 items-center relative z-10">
-          {/* Left Column: Headline & Action Buttons with Editorial Atelier Hierarchy */}
+          {/* Left Column: Headline & Action Buttons with Editorial Restraint */}
           <div className="lg:col-span-7 space-y-6 sm:space-y-8 text-left z-10">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#162D24]/6 border border-[#2F4F42]/15 text-[11px] sm:text-xs font-semibold uppercase tracking-[0.18em] text-[#2F4F42]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#52B788] animate-pulse" />
-              <span>Kurasi Gaya Personal & Panduan Ukuran Pas</span>
+            <div className="flex items-center gap-3">
+              <span className="w-7 h-px bg-[#8EA89D]" />
+              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2F4F42]">
+                Kurasi Gaya Personal & Panduan Ukuran Pas
+              </span>
             </div>
 
             <div className="space-y-4">
@@ -162,7 +160,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <button
                 onClick={onTalkToAI}
-                className="px-7 py-3.5 rounded-xl bg-[#162D24] hover:bg-[#0D1C16] text-[#EDECE6] font-semibold text-xs sm:text-sm tracking-wider shadow-sm hover:shadow-lg transition-all duration-200 flex items-center gap-2.5 cursor-pointer group ring-1 ring-white/10"
+                className="px-7 py-3.5 rounded-xl bg-[#162D24] hover:bg-[#0D1C16] text-[#EDECE6] font-semibold text-xs sm:text-sm tracking-wider shadow-sm hover:shadow-md transition-all duration-200 flex items-center gap-2.5 cursor-pointer group"
               >
                 <span>Konsultasi Stylist</span>
                 <ArrowRight className="w-4 h-4 text-[#8EA89D] group-hover:translate-x-0.5 transition-transform" />
@@ -170,7 +168,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
 
               <button
                 onClick={onReference}
-                className="px-7 py-3.5 rounded-xl bg-[#FAF9F5] hover:bg-white text-[#162D24] border border-[#D5D3CA] font-semibold text-xs sm:text-sm tracking-wider shadow-xs hover:shadow-md transition-all duration-200 flex items-center gap-2.5 cursor-pointer"
+                className="px-7 py-3.5 rounded-xl bg-[#FAF9F5] hover:bg-white text-[#162D24] border border-[#D5D3CA] font-semibold text-xs sm:text-sm tracking-wider shadow-xs hover:shadow-sm transition-all duration-200 flex items-center gap-2.5 cursor-pointer"
               >
                 <Compass className="w-4 h-4 text-[#162D24]" />
                 <span>Katalog Outfit & Thrift</span>
@@ -196,14 +194,14 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
             </div>
           </div>
 
-          {/* Right Column: Layered Geometric Arches + DYNAMIC ROTATING HD MODEL + FLOATING SPEC PILL */}
+          {/* Right Column: Layered Geometric Arches + DYNAMIC ROTATING HD MODEL + SPEC TAG */}
           <div 
             className="lg:col-span-5 relative flex flex-col items-center justify-center"
             onMouseEnter={() => setIsPaused(true)}
             onMouseLeave={() => setIsPaused(false)}
           >
             <div className="relative w-full max-w-[320px] sm:max-w-[420px] h-[440px] sm:h-[570px] flex items-end justify-center mx-auto">
-              {/* Left Pink / Coral Arch */}
+              {/* Left Coral Arch */}
               <div 
                 className="absolute left-1 sm:left-2 bottom-0 w-[210px] sm:w-[280px] h-[360px] sm:h-[480px] rounded-t-full bg-[#E58B94] shadow-md transition-all duration-700"
                 style={{ borderTopLeftRadius: '9999px', borderTopRightRadius: '9999px' }}
@@ -215,21 +213,23 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
                 style={{ borderTopLeftRadius: '9999px', borderTopRightRadius: '9999px' }}
               />
 
-              {/* Floating Spec Pill (Atelier Spec Card) */}
+              {/* Artisan Spec Tag (Tactile specimen card) */}
               <div className="absolute -top-2 -left-2 sm:-left-6 z-30 pointer-events-none">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={`spec-${currentModel.id}`}
-                    initial={{ opacity: 0, y: -8, scale: 0.94 }}
+                    initial={{ opacity: 0, y: -6, scale: 0.96 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 6, scale: 0.94 }}
-                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-                    className="bg-[#FAF9F5]/90 backdrop-blur-md border border-[#8EA89D]/40 rounded-2xl p-2.5 sm:p-3 shadow-lg text-left max-w-[180px] sm:max-w-[210px]"
+                    exit={{ opacity: 0, y: 6, scale: 0.96 }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+                    className="bg-[#FAF9F5] border border-[#162D24]/15 rounded-xl p-3 shadow-md text-left max-w-[190px] sm:max-w-[220px]"
                   >
-                    <div className="flex items-center gap-1.5 pb-1 border-b border-[#162D24]/10 mb-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-[#52B788]" />
-                      <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#2F4F42]">
-                        Spesifikasi Kurasi
+                    <div className="flex items-center justify-between pb-1 border-b border-[#162D24]/10 mb-1.5">
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-[#2F4F42]">
+                        Spesifikasi Busana
+                      </span>
+                      <span className="text-[8px] font-mono text-neutral-400">
+                        0{currentModelIndex + 1}/0{heroModels.length}
                       </span>
                     </div>
                     <p className="text-[10px] sm:text-[11px] font-bold text-[#162D24] truncate">
@@ -319,39 +319,106 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         </div>
       </section>
 
-      {/* 3. CORE FEATURES SHOWCASE */}
+      {/* 3. CORE FEATURES: Editorial Asymmetric Showcase */}
       <section className="py-16 sm:py-24 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full space-y-12">
-        <div className="text-center space-y-3 max-w-2xl mx-auto">
-          <h2 className="text-3xl sm:text-4xl font-extrabold text-[#162D24] tracking-tight font-sans">
-            Panduan Gaya yang Disesuaikan Untukmu
+        <div className="text-left max-w-2xl space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-px bg-[#8EA89D]" />
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[#2F4F42]">
+              Prinsip Kurasi Outfitly
+            </span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-serif font-bold text-[#162D24] tracking-tight">
+            Panduan Busana Berdasarkan Data Fisik & Karya Pengrajin
           </h2>
           <p className="text-sm sm:text-base text-[#2F483D] leading-relaxed">
-            Outfitly memadukan kurasi gaya personal dengan karya pengrajin lokal dan pakaian preloved berkualitas untuk setiap momen pentingmu.
+            Menghubungkan kecocokan warna kulit dan ukuran sentimeter (cm) nyata dengan koleksi kurasi UMKM lokal Indonesia.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {features.map((feat, i) => {
-            const Icon = feat.icon;
-            return (
-              <div
-                key={i}
-                className="bg-white p-6 rounded-3xl border border-[#D6DFDA] shadow-xs hover:shadow-lg transition-all duration-300 flex flex-col justify-between space-y-4 group hover:-translate-y-1"
-              >
-                <div className="w-12 h-12 rounded-2xl bg-[#EFEFEA] group-hover:bg-[#8EA89D] text-[#162D24] flex items-center justify-center transition-colors shadow-2xs">
-                  <Icon className="w-6 h-6" />
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+          {/* Flagship Card (Spans 6 cols on lg) */}
+          <div className="lg:col-span-6 bg-white p-6 sm:p-8 rounded-3xl border border-[#D6DFDA] shadow-xs flex flex-col justify-between space-y-6">
+            <div className="space-y-4">
+              <div className="w-12 h-12 rounded-2xl bg-[#162D24] text-white flex items-center justify-center shadow-xs">
+                <Palette className="w-6 h-6 text-[#8EA89D]" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg sm:text-xl font-bold font-serif text-[#162D24]">
+                  Harmoni Rona Kulit & Proporsi Tubuh (cm)
+                </h3>
+                <p className="text-xs sm:text-sm text-neutral-600 leading-relaxed">
+                  Menemukan palet warna pakaian yang paling menyatu dengan rona kulit alami (Cool, Neutral, Warm Tone) serta panduan siluet kerah dan baju sesuai postur tubuh.
+                </p>
+              </div>
+            </div>
+
+            {/* Interactive Tone Preview Swatch Strip */}
+            <div className="p-4 rounded-2xl bg-[#FAF9F5] border border-[#E8E4D9] space-y-3">
+              <div className="flex items-center justify-between text-[11px] font-semibold text-[#162D24]">
+                <span>Spektrum Rona Busana:</span>
+                <span className="text-[#2F4F42] text-[10px] font-mono">Toleransi ±0.5 cm</span>
+              </div>
+              <div className="grid grid-cols-4 gap-2">
+                <div className="p-2 rounded-xl bg-white border border-[#DDD8CC] text-center space-y-1">
+                  <div className="w-full h-5 rounded-md bg-[#2F4858]" />
+                  <span className="text-[10px] font-bold text-[#162D24] block">Cool</span>
                 </div>
-                <div className="space-y-2">
-                  <h3 className="text-base font-bold text-[#162D24] font-sans group-hover:text-[#1E3A2F]">
-                    {feat.title}
-                  </h3>
-                  <p className="text-xs text-neutral-600 leading-relaxed">
-                    {feat.desc}
-                  </p>
+                <div className="p-2 rounded-xl bg-white border border-[#DDD8CC] text-center space-y-1">
+                  <div className="w-full h-5 rounded-md bg-[#C5A086]" />
+                  <span className="text-[10px] font-bold text-[#162D24] block">Warm</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white border border-[#DDD8CC] text-center space-y-1">
+                  <div className="w-full h-5 rounded-md bg-[#162D24]" />
+                  <span className="text-[10px] font-bold text-[#162D24] block">Neutral</span>
+                </div>
+                <div className="p-2 rounded-xl bg-white border border-[#DDD8CC] text-center space-y-1">
+                  <div className="w-full h-5 rounded-md bg-[#8C6D58]" />
+                  <span className="text-[10px] font-bold text-[#162D24] block">Earthy</span>
                 </div>
               </div>
-            );
-          })}
+            </div>
+          </div>
+
+          {/* Supporting Card 1: UMKM Empowerment (3 cols on lg) */}
+          <div className="lg:col-span-3 bg-white p-6 sm:p-7 rounded-3xl border border-[#D6DFDA] shadow-xs flex flex-col justify-between space-y-6">
+            <div className="space-y-3">
+              <div className="w-11 h-11 rounded-2xl bg-[#EFEFEA] text-[#162D24] flex items-center justify-center">
+                <HeartHandshake className="w-5 h-5 text-[#2F4F42]" />
+              </div>
+              <h3 className="text-base font-bold font-serif text-[#162D24]">
+                Pemberdayaan UMKM Lokal
+              </h3>
+              <p className="text-xs text-neutral-600 leading-relaxed">
+                Setiap pilihan busana terhubung langsung dengan pengrajin tenun, batik, denim, dan penjahit independen dari berbagai sentra kreatif Indonesia.
+              </p>
+            </div>
+            <div className="pt-2 border-t border-neutral-100 text-[11px] font-semibold text-[#2F4F42]">
+              Bandung • Solo • Yogya • Pekalongan
+            </div>
+          </div>
+
+          {/* Supporting Card 2: Personal Styling Consultation (3 cols on lg) */}
+          <div className="lg:col-span-3 bg-[#162D24] text-white p-6 sm:p-7 rounded-3xl border border-[#254236] shadow-xs flex flex-col justify-between space-y-6">
+            <div className="space-y-3">
+              <div className="w-11 h-11 rounded-2xl bg-[#8EA89D]/20 text-[#8EA89D] flex items-center justify-center">
+                <Compass className="w-5 h-5" />
+              </div>
+              <h3 className="text-base font-bold font-serif text-white">
+                Konsultasi Styling Personal
+              </h3>
+              <p className="text-xs text-neutral-300 leading-relaxed">
+                Dapatkan rekomendasi paduan busana untuk kuliah, kerja, hangout, hingga momen formal sesuai karakteristik pribadimu.
+              </p>
+            </div>
+            <button
+              onClick={onTalkToAI}
+              className="w-full py-2.5 px-4 rounded-xl bg-[#8EA89D] hover:bg-[#A3B9AD] text-[#162D24] text-xs font-bold transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>Mulai Konsultasi</span>
+              <ArrowRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </section>
 

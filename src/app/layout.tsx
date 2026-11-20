@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Outfitly — Find Your Perfect Style | Fashion & UMKM Community",
-  description: "Temukan paduan outfit terbaik sesuai rona warna, siluet tubuh, dan gaya personalmu dengan kurasi produk UMKM fashion lokal dan preloved terverifikasi.",
+  title: "Outfitly: Temukan Gaya & Ukuran Pas | Kurasi Fashion UMKM Lokal",
+  description: "Temukan paduan outfit terbaik sesuai rona warna, siluet tubuh, dan ukuran sentimeter (cm) akurat dengan kurasi produk UMKM fashion lokal dan thrift terverifikasi.",
 };
 
 export default function RootLayout({
