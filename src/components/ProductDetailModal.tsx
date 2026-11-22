@@ -1,541 +1,347 @@
 'use client';
 
-import React, { useState } from 'react';
-import { UMKMProductPost, BodyMeasurements } from '@/types';
-import { OFTEA_POSTS } from '@/data/umkm-products';
-import { calculateSizeCompatibility } from '@/lib/sizing-engine';
-import { StoreProfileModal } from '@/components/StoreProfileModal';
-import { CommentsModal } from '@/components/CommentsModal';
-import { getStoreProfileByNameOrId, incrementStoreTraffic } from '@/data/marketplace-store';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  ArrowLeft,
-  Heart,
-  MessageSquare,
   BookmarkCheck,
-  Maximize2,
-  Share2,
-  CheckCircle2,
-  Sparkles,
-  ShoppingBag,
+  ChevronRight,
+  Columns2,
+  Flag,
+  Heart,
+  MessageCircle,
   Ruler,
-  ShieldAlert,
-  ArrowRightLeft,
-  AlertTriangle,
-  Info,
+  Share2,
+  ShoppingBag,
   Store,
-  ExternalLink,
-  MessageCircle
 } from 'lucide-react';
+import { useApp } from './AppContext';
+import { ProductImage } from './GarmentArt';
+import { SellerBadge } from './ProductCard';
+import { Modal, btnGhost, btnPrimary } from './ui';
+import { CATEGORY_LABEL, CONDITION_LABEL } from '@/lib/data';
+import { useBookmarks, useCatalog, useComments, useLikeProduct, useProfile, useTrack } from '@/lib/hooks';
+import { evaluateFit, bestSize, FIT_LABEL, fitTone } from '@/lib/sizing';
+import { emitToast, formatIDR, useHydrated } from '@/lib/storage';
+import type { GarmentMeasurement, UMKMProductPost } from '@/lib/types';
 
-interface ProductDetailModalProps {
-  product: UMKMProductPost | null;
-  onClose: () => void;
-  onSelectRelated: (product: UMKMProductPost) => void;
-  isSaved: boolean;
-  onToggleSave: (id: string) => void;
-  onShowToast?: (text: string) => void;
-  userMeasurements?: BodyMeasurements | null;
-  onOpenSmartSize?: () => void;
-  onOpenComparison?: (product: UMKMProductPost) => void;
-  onOpenCheckout?: (product: UMKMProductPost) => void;
-  onOpenReport?: (product: UMKMProductPost) => void;
+export function marketplaceName(url?: string): string {
+  if (!url) return 'Toko';
+  if (/shopee/i.test(url)) return 'Shopee';
+  if (/tokopedia/i.test(url)) return 'Tokopedia';
+  return 'Toko Resmi';
 }
 
-export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({
-  product,
-  onClose,
-  onSelectRelated,
-  isSaved,
-  onToggleSave,
-  onShowToast,
-  userMeasurements,
-  onOpenSmartSize,
-  onOpenComparison,
-  onOpenCheckout,
-  onOpenReport
-}) => {
-  const [liked, setLiked] = useState(false);
-  const [likeCount, setLikeCount] = useState(product?.likes || 120);
-  const [selectedSizeIndex, setSelectedSizeIndex] = useState(0);
-  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
-  const [isCommentsModalOpen, setIsCommentsModalOpen] = useState(false);
+export function waLink(p: UMKMProductPost, size?: string): string {
+  const msg = `Halo ${p.sellerName}, saya melihat "${p.title}" di Outfitly${size ? ` (ukuran ${size})` : ''}. Apakah masih tersedia? Terima kasih.`;
+  return `https://wa.me/${p.sellerContact}?text=${encodeURIComponent(msg)}`;
+}
 
-  if (!product) return null;
+export function specRows(p: UMKMProductPost, s: GarmentMeasurement): { label: string; value: string }[] {
+  const rows: { label: string; value?: number; unit?: string }[] = [
+    { label: 'Lingkar Dada (LD)', value: s.chestBustCm },
+    { label: 'Lingkar Pinggang (LP)', value: s.waistCm },
+    { label: 'Lingkar Pinggul', value: s.hipsCm },
+    { label: 'Lebar Bahu', value: s.shoulderWidthCm },
+    { label: 'Panjang', value: s.garmentLengthCm },
+    { label: 'Panjang Insole', value: s.insoleCm },
+    { label: 'Panjang Tas', value: s.bagLengthCm },
+    { label: 'Lebar Tas', value: s.bagWidthCm },
+    { label: 'Tinggi Tas', value: s.bagHeightCm },
+  ];
+  void p;
+  return rows
+    .filter((r) => r.value !== undefined)
+    .map((r) => ({ label: r.label, value: `${String(r.value).replace('.', ',')} cm` }));
+}
 
-  const currentSizeObj = product.availableSizes[selectedSizeIndex] || product.availableSizes[0];
-  const fitAnalysis = calculateSizeCompatibility(product, userMeasurements, currentSizeObj?.sizeLabel);
-  const relatedProducts = OFTEA_POSTS.filter(p => p.id !== product.id && p.category === product.category).slice(0, 4);
+export function ProductDetailModal({ productId, onClose }: { productId: string | null; onClose: () => void }) {
+  const [catalog] = useCatalog();
+  const product = catalog.find((p) => p.id === productId) ?? null;
+  return (
+    <Modal open={!!product} onClose={onClose} size="xl" title={product ? <span className="text-base md:text-lg">Detail Produk</span> : null}
+      footer={product ? <BuyBar product={product} /> : undefined}>
+      {product && <DetailBody key={product.id} product={product} />}
+    </Modal>
+  );
+}
 
-  const handleVisitSite = () => {
-    incrementStoreTraffic('whatsappInquiries');
-    const text = `Halo Admin ${product.sellerName}! Saya menemukan produk "${product.title}" (Rp ${product.price.toLocaleString('id-ID')}) di aplikasi Outfitly. Apakah ukuran ${currentSizeObj?.sizeLabel || 'ini'} ready stock?`;
-    const url = `https://wa.me/${product.sellerContact}?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
-  };
+function useSelectedSize(product: UMKMProductPost) {
+  const [profile] = useProfile();
+  const best = bestSize(product, profile.measurements);
+  return { best, profile };
+}
 
-  const handleOpenExternalShop = () => {
-    if (!product.externalLink) return;
-    incrementStoreTraffic('externalLinkClicks');
-    window.open(product.externalLink, '_blank');
-  };
+function BuyBar({ product }: { product: UMKMProductPost }) {
+  const track = useTrack();
+  const { best } = useSelectedSize(product);
+  const soldOut = !product.isAvailable || product.stockCount <= 0;
+  return (
+    <div className="flex items-center gap-2">
+      <div className="hidden min-w-0 flex-1 sm:block">
+        <p className="truncate text-xs text-muted">{product.sellerName}</p>
+        <p className="text-base font-semibold text-forest">{formatIDR(product.price)}</p>
+      </div>
+      <a
+        href={soldOut ? undefined : waLink(product, best.size.sizeLabel)}
+        target="_blank"
+        rel="noreferrer"
+        aria-disabled={soldOut}
+        onClick={(e) => {
+          if (soldOut) {
+            e.preventDefault();
+            return;
+          }
+          track(product.sellerId, 'waChats');
+        }}
+        className={`${btnGhost} flex-1 sm:flex-none ${soldOut ? 'pointer-events-none opacity-40' : ''}`}
+      >
+        <MessageCircle className="size-4" strokeWidth={1.6} /> Chat WhatsApp
+      </a>
+      <a
+        href={soldOut ? undefined : product.externalLink}
+        target="_blank"
+        rel="noreferrer"
+        onClick={(e) => {
+          if (soldOut || !product.externalLink) {
+            e.preventDefault();
+            if (!soldOut) emitToast('Penjual belum menautkan toko luar. Gunakan Chat WhatsApp.', 'info');
+            return;
+          }
+          track(product.sellerId, 'linkClicks');
+        }}
+        className={`${btnPrimary} flex-1 sm:flex-none ${soldOut ? 'pointer-events-none opacity-40' : ''}`}
+      >
+        <ShoppingBag className="size-4" strokeWidth={1.6} />
+        {soldOut ? 'Stok Habis' : `Beli di ${marketplaceName(product.externalLink)}`}
+      </a>
+    </div>
+  );
+}
 
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({ title: product.title, text: product.description, url: window.location.href });
-    } else {
-      navigator.clipboard?.writeText(window.location.href);
-      if (onShowToast) {
-        onShowToast('Link produk berhasil disalin!');
-      }
+function DetailBody({ product }: { product: UMKMProductPost }) {
+  const { openStore, openComments, openReport, openCompare, openMeasurements } = useApp();
+  const like = useLikeProduct();
+  const bookmarks = useBookmarks();
+  const track = useTrack();
+  const [comments] = useComments();
+  const hydrated = useHydrated();
+  const { best, profile } = useSelectedSize(product);
+  const [sizeLabel, setSizeLabel] = useState(best.size.sizeLabel);
+  const [frame, setFrame] = useState(0);
+
+  useEffect(() => {
+    track(product.sellerId, 'impressions');
+  }, [product.id, product.sellerId, track]);
+
+  const size = product.availableSizes.find((s) => s.sizeLabel === sizeLabel) ?? product.availableSizes[0];
+  const fit = useMemo(() => evaluateFit(product, size, profile.measurements), [product, size, profile.measurements]);
+  const showFit = product.category !== 'bag' && product.category !== 'hijab';
+  const commentCount = comments.filter((c) => c.productId === product.id).length;
+  const saved = hydrated && bookmarks.has(product.id);
+  const liked = hydrated && like.has(product.id);
+
+  const frames = [
+    { label: 'Foto utama', cls: '' },
+    { label: 'Detail', cls: 'scale-[1.8] origin-[50%_40%]' },
+    { label: 'Ukuran cm', cls: '' },
+  ];
+
+  const share = async (): Promise<void> => {
+    const url = `${window.location.origin}/?produk=${product.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      emitToast('Tautan produk disalin');
+    } catch {
+      emitToast('Tidak dapat menyalin tautan', 'error');
     }
   };
 
-  const conditionLabels: Record<string, { label: string; badgeColor: string }> = {
-    new: { label: 'Brand New (Baru)', badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
-    like_new: { label: 'Like New (99% Mulus)', badgeColor: 'bg-teal-100 text-teal-800 border-teal-300' },
-    very_good: { label: 'Very Good (Terawat)', badgeColor: 'bg-blue-100 text-blue-800 border-blue-300' },
-    good: { label: 'Good (Pemakaian Wajar)', badgeColor: 'bg-amber-100 text-amber-800 border-amber-300' },
-    has_defects: { label: 'Has Defects (Ada Defek)', badgeColor: 'bg-rose-100 text-rose-800 border-rose-300' }
-  };
-
-  const currentCondition = conditionLabels[product.condition] || conditionLabels.new;
-
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#EFEFEA]/95 backdrop-blur-xs p-3 sm:p-6 lg:p-10 flex flex-col justify-between animate-fadeIn pb-24 sm:pb-8">
-      <div className="max-w-7xl mx-auto w-full space-y-6">
-        {/* Top Back Navigation */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={onClose}
-            className="w-10 h-10 rounded-full bg-white text-[#162D24] flex items-center justify-center hover:bg-neutral-100 transition-colors shadow-xs cursor-pointer"
-            title="Kembali"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </button>
-
-          <div className="flex items-center gap-3">
-            <span className={`text-xs font-bold px-3 py-1 rounded-full border ${currentCondition.badgeColor}`}>
-              {currentCondition.label}
-            </span>
-
-            <button
-              onClick={() => setIsStoreModalOpen(true)}
-              className="text-xs font-bold text-[#162D24] px-3.5 py-1 rounded-full bg-white shadow-2xs border border-neutral-200 hover:border-[#162D24] hover:bg-[#FAF9F5] flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Buka Profil & Cerita UMKM Toko"
-            >
-              <Store className="w-3.5 h-3.5 text-[#2D5A47]" />
-              <span>{product.sellerName} • {product.sellerCity}</span>
-              <span className="text-[10px] text-[#2D5A47] font-semibold underline ml-1">Profil Toko</span>
-            </button>
-
-            {onOpenReport && (
-              <button
-                onClick={() => onOpenReport(product)}
-                className="p-2 rounded-full bg-white hover:bg-rose-50 text-neutral-400 hover:text-rose-600 transition-colors cursor-pointer"
-                title="Laporkan Listing"
-              >
-                <ShieldAlert className="w-4 h-4" />
-              </button>
+    <div className="grid gap-6 p-5 md:grid-cols-[1.05fr_1fr] md:gap-8 md:p-7">
+      <div>
+        <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-cream-2">
+          <div className={`h-full w-full transition-transform duration-500 ${frames[frame].cls}`}>
+            <ProductImage src={product.imageUrl} colors={product.colorHex} alt={product.title} />
+          </div>
+          {frame === 2 && size && <FlatLayOverlay size={size} />}
+          <div className="absolute left-3 top-3 flex flex-col items-start gap-1.5">
+            <SellerBadge type={product.sellerType} />
+            {product.isOneOfAKind && (
+              <span className="rounded-full bg-forest px-2.5 py-1 text-[11px] font-semibold text-cream">Kurasi Tunggal (1 Pcs)</span>
             )}
           </div>
         </div>
-
-        {/* Main Product Card */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-          {/* Left Column: Big Product Image (5 cols) */}
-          <div className="lg:col-span-5 relative bg-white rounded-3xl overflow-hidden shadow-lg aspect-3/4 group">
-            <img
-              src={product.imageUrl}
-              alt={product.title}
-              className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-500"
-            />
-            {product.isOneOfAKind && (
-              <div className="absolute top-4 left-4 px-3 py-1 bg-black/70 backdrop-blur-xs text-white text-[11px] font-bold rounded-full">
-                Kurasi Tunggal (1 Pcs)
-              </div>
-            )}
+        {product.imageUrl.startsWith('https://images.unsplash.com') && (
+          <p className="mt-2 text-[12px] text-muted">Foto ilustrasi dari Unsplash, menunjukkan model serupa.</p>
+        )}
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {frames.map((f, i) => (
             <button
-              onClick={() => window.open(product.imageUrl, '_blank')}
-              className="absolute bottom-4 right-4 w-9 h-9 rounded-xl bg-white/90 hover:bg-white text-[#162D24] flex items-center justify-center shadow-md cursor-pointer transition-all"
-              title="Perbesar Gambar"
+              key={f.label}
+              type="button"
+              onClick={() => setFrame(i)}
+              className={`overflow-hidden rounded-xl border text-left transition ${frame === i ? 'border-forest' : 'border-line'}`}
             >
-              <Maximize2 className="w-4 h-4" />
+              <div className="aspect-square overflow-hidden bg-cream-2">
+                <div className={`h-full w-full ${f.cls}`}>
+                  <ProductImage src={product.imageUrl} colors={product.colorHex} alt={f.label} />
+                </div>
+              </div>
+              <p className="px-2 py-1 text-[11px] text-muted">{f.label}</p>
             </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="min-w-0">
+        <button type="button" onClick={() => openStore(product.sellerId)} className="group inline-flex min-h-11 items-center gap-1.5 text-xs text-muted hover:text-forest">
+          <Store className="size-3.5" strokeWidth={1.6} /> {product.sellerName} . {product.sellerCity}
+          <ChevronRight className="size-3.5 transition group-hover:translate-x-0.5" />
+        </button>
+        <h2 className="mt-2 font-serif text-[26px] leading-tight text-forest md:text-[32px]">{product.title}</h2>
+        <div className="mt-2 flex flex-wrap items-baseline gap-2">
+          <span className="text-xl font-semibold">{formatIDR(product.price)}</span>
+          {product.originalPrice && <span className="text-sm text-muted line-through">{formatIDR(product.originalPrice)}</span>}
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5 text-[11px]">
+          <span className="rounded-full border border-line px-2.5 py-1">{CATEGORY_LABEL[product.category]}</span>
+          <span className="rounded-full border border-line px-2.5 py-1">Kondisi: {CONDITION_LABEL[product.condition]}</span>
+          {product.material && <span className="rounded-full border border-line px-2.5 py-1">{product.material}</span>}
+          <span className="rounded-full border border-line px-2.5 py-1">
+            {product.stockCount > 0 ? `Stok ${product.stockCount}` : 'Habis'}
+          </span>
+        </div>
+        <p className="mt-4 text-[14px] leading-relaxed text-ink/80">{product.description}</p>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          <IconAction onClick={() => like.toggle(product.id)} active={liked} label={`${product.likes}`}>
+            <Heart className={`size-4 ${liked ? 'fill-coral-ink text-coral-ink' : ''}`} strokeWidth={1.6} />
+          </IconAction>
+          <IconAction
+            onClick={() => {
+              const added = bookmarks.toggle(product.id);
+              if (added) track(product.sellerId, 'bookmarks');
+              emitToast(added ? 'Disimpan ke koleksi' : 'Dihapus dari koleksi', 'info');
+            }}
+            active={saved}
+            label={saved ? 'Tersimpan' : 'Simpan'}
+          >
+            <BookmarkCheck className="size-4" strokeWidth={1.6} />
+          </IconAction>
+          <IconAction onClick={() => openComments(product.id)} label={`Komentar ${commentCount}`}>
+            <MessageCircle className="size-4" strokeWidth={1.6} />
+          </IconAction>
+          <IconAction onClick={share} label="Bagikan">
+            <Share2 className="size-4" strokeWidth={1.6} />
+          </IconAction>
+          <IconAction onClick={() => openReport(product.id)} label="Laporkan">
+            <Flag className="size-4" strokeWidth={1.6} />
+          </IconAction>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-line bg-white/50 p-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-semibold text-forest">Panduan Ukuran (cm)</p>
+            <div className="flex gap-1.5">
+              <button type="button" onClick={() => openMeasurements()} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-line px-3 text-[12px] text-forest hover:bg-cream-2">
+                <Ruler className="size-3" /> Ukuran saya
+              </button>
+              <button type="button" onClick={() => openCompare(product.id)} className="inline-flex min-h-11 items-center gap-1 rounded-full border border-line px-3 text-[12px] text-forest hover:bg-cream-2">
+                <Columns2 className="size-3" /> Bandingkan
+              </button>
+            </div>
           </div>
-
-          {/* Right Column: Details & Actions (7 cols) */}
-          <div className="lg:col-span-7 bg-white rounded-3xl p-6 sm:p-8 shadow-lg space-y-6">
-            {/* Top Row: Actions (Like, Comment, Save, Share) */}
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 text-[#162D24]">
-                <button
-                  onClick={() => {
-                    setLiked(!liked);
-                    setLikeCount(liked ? likeCount - 1 : likeCount + 1);
-                  }}
-                  className="flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer"
-                  title="Suka Outfit Ini"
-                >
-                  <Heart className={`w-5 h-5 ${liked ? 'fill-rose-600 text-rose-600' : ''}`} />
-                  <span className="text-xs font-semibold text-neutral-600">{likeCount}</span>
-                </button>
-
-                <button
-                  onClick={() => setIsCommentsModalOpen(true)}
-                  className="flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer text-neutral-700 hover:text-[#162D24]"
-                  title="Lihat & Tulis Komentar"
-                >
-                  <MessageSquare className="w-5 h-5" />
-                  <span className="text-xs font-semibold">Komen</span>
-                </button>
-
-                <button
-                  onClick={() => onToggleSave(product.id)}
-                  className="flex items-center gap-1.5 hover:scale-105 transition-transform cursor-pointer"
-                  title="Simpan Outfit"
-                >
-                  <BookmarkCheck className={`w-5 h-5 ${isSaved ? 'fill-[#162D24] text-[#162D24]' : ''}`} />
-                  <span className="text-xs font-semibold text-neutral-600">{isSaved ? 'Tersimpan' : 'Simpan'}</span>
-                </button>
-
-                <button
-                  onClick={handleShare}
-                  className="hover:scale-105 transition-transform cursor-pointer text-neutral-600 hover:text-[#162D24]"
-                  title="Bagikan"
-                >
-                  <Share2 className="w-5 h-5" />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {onOpenComparison && (
-                  <button
-                    onClick={() => onOpenComparison(product)}
-                    className="px-4 py-2 rounded-full text-xs font-bold bg-[#FAF9F5] hover:bg-[#EFECE6] text-[#162D24] border border-[#162D24] flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <ArrowRightLeft className="w-3.5 h-3.5 text-[#2D5A47]" />
-                    <span>Bandingkan Ukuran</span>
-                  </button>
-                )}
-
-                <button
-                  onClick={() => onToggleSave(product.id)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all shadow-xs cursor-pointer ${
-                    isSaved
-                      ? 'bg-[#162D24] text-white ring-2 ring-[#8EA89D]'
-                      : 'bg-[#1E3A2F] hover:bg-[#162D24] text-white'
-                  }`}
-                >
-                  {isSaved ? 'Tersimpan' : 'Simpan'}
-                </button>
-              </div>
-            </div>
-
-            {/* Title & Price */}
-            <div className="space-y-2">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="px-3 py-1 rounded-full bg-[#EFEFEA] text-[10px] font-bold text-[#162D24] uppercase tracking-wider">
-                  {product.sellerType === 'community_preloved' ? 'Preloved Komunitas' : product.sellerType === 'collab_mitra' ? 'Collab Mitra' : 'UMKM Lokal'}
-                </span>
-                <span className="px-3 py-1 rounded-full bg-[#EFEFEA] text-[10px] font-bold text-neutral-600 uppercase tracking-wider">
-                  Kategori: {product.category.replace('_', ' ')}
-                </span>
-                <span className="px-3 py-1 rounded-full bg-[#EFEFEA] text-[10px] font-bold text-neutral-600 uppercase tracking-wider">
-                  Gaya: {product.style}
-                </span>
-              </div>
-
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#162D24] tracking-tight font-sans">
-                {product.title}
-              </h1>
-
-              <div className="flex items-baseline gap-3">
-                <span className="text-[#162D24] font-extrabold text-2xl sm:text-3xl">
-                  Rp {product.price.toLocaleString('id-ID')}
-                </span>
-                {product.originalPrice && (
-                  <span className="text-xs sm:text-sm text-neutral-400 line-through">
-                    Rp {product.originalPrice.toLocaleString('id-ID')}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Secondhand Disclosure (if preloved) */}
-            {product.sellerType === 'community_preloved' && (
-              <div className="p-4 rounded-2xl bg-[#FFF8E6] border border-[#F0DFB0] space-y-2 text-xs">
-                <div className="flex items-center gap-2 font-bold text-amber-900">
-                  <Info className="w-4 h-4" />
-                  <span>Detail Kondisi Secondhand (Keterbukaan Penjual):</span>
-                </div>
-                {product.usageDuration && (
-                  <p className="text-neutral-700"><strong>Riwayat:</strong> {product.usageDuration}</p>
-                )}
-                {product.defectNotes && (
-                  <p className="text-neutral-700"><strong>Catatan Defek:</strong> {product.defectNotes}</p>
-                )}
-              </div>
-            )}
-
-            {/* Smart Size Compatibility Engine Breakdown */}
-            <div className="p-5 rounded-2xl bg-[#EAF2EE] border border-[#BFD9CD] space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-xs font-semibold text-[#162D24]">
-                  <Ruler className="w-4 h-4 text-[#2D5A47]" />
-                  <span>Kesesuaian Ukuran: Varian {currentSizeObj?.sizeLabel}</span>
-                </div>
-                {product.category === 'shoes' ? (
-                  <span className="text-xs font-bold px-3 py-1 rounded-lg bg-emerald-800 text-emerald-100">
-                    Insole: {currentSizeObj?.garmentLengthCm || 24.5} cm
-                  </span>
-                ) : product.category === 'bag' ? (
-                  <span className="text-xs font-bold px-3 py-1 rounded-lg bg-emerald-800 text-emerald-100">
-                    Kapasitas: {currentSizeObj?.sizeLabel || 'All Size'}
-                  </span>
-                ) : userMeasurements?.chestBustCm ? (
-                  <span className={`text-xs font-bold px-3 py-1 rounded-lg ${
-                    fitAnalysis.overallScore >= 80 ? 'bg-emerald-800 text-emerald-100' : 'bg-amber-800 text-amber-100'
-                  }`}>
-                    {fitAnalysis.overallScore}% Sesuai
-                  </span>
-                ) : (
-                  <button
-                    onClick={onOpenSmartSize}
-                    className="text-xs font-semibold text-[#162D24] underline hover:text-[#2D5A47] cursor-pointer"
-                  >
-                    Atur Ukuran Tubuh (CM)
-                  </button>
-                )}
-              </div>
-
-              <div className="text-xs text-neutral-800 font-semibold">
-                {product.category === 'shoes'
-                  ? `Varian ${currentSizeObj?.sizeLabel} • Insole ${currentSizeObj?.garmentLengthCm || 24.5} cm`
-                  : product.category === 'bag'
-                  ? `Varian ${currentSizeObj?.sizeLabel} • Kapasitas Proporsional`
-                  : fitAnalysis.fitHeadline}
-              </div>
-
-              <p className="text-[11px] text-neutral-600 leading-relaxed">
-                {product.category === 'shoes'
-                  ? `Panjang insole telapak kaki ${currentSizeObj?.garmentLengthCm || 24.5} cm. Disarankan mengukur panjang telapak kaki Anda untuk memastikan sisa ruang jemari 0.5 - 1 cm.`
-                  : product.category === 'bag'
-                  ? (product.measurementMethod || 'Dimensi tas dirancang ergonomis untuk memuat perlengkapan harian secara rapi.')
-                  : fitAnalysis.summaryExplanation}
-              </p>
-
-              {fitAnalysis.detailedChecks.length > 0 && product.category !== 'shoes' && product.category !== 'bag' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                  {fitAnalysis.detailedChecks.map((c, i) => (
-                    <div key={i} className="p-2.5 rounded-xl bg-white/90 border border-[#D0E2D9] text-[10px] space-y-0.5">
-                      <div className="flex justify-between font-bold text-[#162D24]">
-                        <span>Bagian {c.part}:</span>
-                        <span className={c.status === 'ideal' ? 'text-emerald-700' : 'text-amber-700'}>
-                          {c.garmentMeasurementCm ? `${c.garmentMeasurementCm} cm` : 'N/A'}
-                        </span>
-                      </div>
-                      <p className="text-neutral-600">{c.note}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <p className="text-[9px] text-neutral-500 italic pt-1">
-                {product.category === 'shoes' 
-                  ? 'Ukuran insole dihitung mendatar dari tumit belakang hingga ujung ibu jari kaki.'
-                  : product.category === 'bag'
-                  ? 'Dimensi dihitung dalam sentimeter (cm) dengan toleransi jahitan pengrajin ±1 cm.'
-                  : fitAnalysis.disclaimer}
-              </p>
-            </div>
-
-            {/* Size Selector & Garment Measurement Table */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-semibold text-[#162D24]">Pilih Varian Ukuran:</label>
-                {product.measurementMethod && (
-                  <span className="text-[10px] text-neutral-400">{product.measurementMethod}</span>
-                )}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {product.availableSizes.map((s, idx) => (
+          {product.availableSizes.length > 1 && (
+            <div className="mt-3 flex flex-wrap gap-1.5">
+              {product.availableSizes.map((s) => {
+                const f = evaluateFit(product, s, profile.measurements);
+                return (
                   <button
                     key={s.sizeLabel}
-                    onClick={() => setSelectedSizeIndex(idx)}
-                    className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                      selectedSizeIndex === idx
-                        ? 'bg-[#162D24] text-white shadow-xs'
-                        : 'bg-[#FAF9F5] text-[#162D24] border border-[#DCDAD2] hover:bg-[#EAE6DC]'
+                    type="button"
+                    onClick={() => setSizeLabel(s.sizeLabel)}
+                    className={`min-h-11 min-w-12 rounded-lg border px-3 text-sm transition hover:border-forest/50 ${
+                      s.sizeLabel === size.sizeLabel ? 'border-forest bg-forest text-cream' : 'border-line-2 bg-white'
                     }`}
                   >
                     {s.sizeLabel}
+                    {showFit && hydrated && <span className="ml-1 text-[10px] opacity-70">{f.score}%</span>}
                   </button>
+                );
+              })}
+            </div>
+          )}
+          <table className="mt-3 w-full text-sm">
+            <tbody>
+              {specRows(product, size).map((r) => (
+                <tr key={r.label} className="border-b border-line last:border-0">
+                  <td className="py-2 text-muted">{r.label}</td>
+                  <td className="py-2 text-right font-semibold tabular-nums text-ink">{r.value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {showFit && hydrated && (
+            <div className="mt-3 rounded-xl bg-cream-2 p-3">
+              <div className="flex items-center justify-between">
+                <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${fitTone(fit.status)}`}>
+                  {FIT_LABEL[fit.status]} untuk tubuh Anda
+                </span>
+                <span className="text-sm font-semibold tabular-nums text-forest">{fit.score}%</span>
+              </div>
+              <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-line">
+                <div className="h-full rounded-full bg-forest transition-all" style={{ width: `${fit.score}%` }} />
+              </div>
+              <ul className="mt-2 space-y-1 text-[12.5px] text-ink/75">
+                {fit.notes.map((n) => (
+                  <li key={n}>{n}</li>
                 ))}
-              </div>
-
-              {/* Table of garment CM measurements */}
-              <div className="overflow-x-auto rounded-xl border border-[#DCDAD2]">
-                <table className="w-full text-[11px] text-left">
-                  <thead className="bg-[#FAF9F5] text-neutral-600 border-b border-[#DCDAD2]">
-                    <tr>
-                      <th className="py-2.5 px-3 font-semibold">Varian</th>
-                      {product.category === 'shoes' ? (
-                        <>
-                          <th className="py-2.5 px-3 font-semibold">Panjang Insole</th>
-                          <th className="py-2.5 px-3 font-semibold">Toleransi</th>
-                          <th className="py-2.5 px-3 font-semibold">Profil Sol</th>
-                        </>
-                      ) : product.category === 'bag' ? (
-                        <>
-                          <th className="py-2.5 px-3 font-semibold">Tinggi / Dimensi</th>
-                          <th className="py-2.5 px-3 font-semibold">Material</th>
-                          <th className="py-2.5 px-3 font-semibold">Kapasitas</th>
-                        </>
-                      ) : product.category === 'jeans' || product.category === 'pants' || product.category === 'skirt' ? (
-                        <>
-                          <th className="py-2.5 px-3 font-semibold">Pinggang (LP)</th>
-                          <th className="py-2.5 px-3 font-semibold">Pinggul</th>
-                          <th className="py-2.5 px-3 font-semibold">Paha</th>
-                          <th className="py-2.5 px-3 font-semibold">Panjang</th>
-                        </>
-                      ) : (
-                        <>
-                          <th className="py-2.5 px-3 font-semibold">Dada (LD)</th>
-                          <th className="py-2.5 px-3 font-semibold">Pinggang (LP)</th>
-                          <th className="py-2.5 px-3 font-semibold">Bahu</th>
-                          <th className="py-2.5 px-3 font-semibold">Panjang</th>
-                        </>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-neutral-100">
-                    {product.availableSizes.map((s, idx) => (
-                      <tr 
-                        key={s.sizeLabel} 
-                        onClick={() => setSelectedSizeIndex(idx)}
-                        className={`cursor-pointer transition-colors ${selectedSizeIndex === idx ? 'bg-[#EAF2EE] font-bold text-[#162D24]' : 'hover:bg-[#FAF9F5]'}`}
-                      >
-                        <td className="py-2 px-3">{s.sizeLabel}</td>
-                        {product.category === 'shoes' ? (
-                          <>
-                            <td className="py-2 px-3 font-bold text-[#162D24]">{s.garmentLengthCm ? `${s.garmentLengthCm} cm` : '-'}</td>
-                            <td className="py-2 px-3">±{product.measurementToleranceCm || 0.5} cm</td>
-                            <td className="py-2 px-3">{product.material?.includes('Sole') ? 'Lug Phylon / Karet' : 'Sol Nyaman'}</td>
-                          </>
-                        ) : product.category === 'bag' ? (
-                          <>
-                            <td className="py-2 px-3 font-bold text-[#162D24]">{s.garmentLengthCm ? `${s.garmentLengthCm} cm` : 'Proporsi Standar'}</td>
-                            <td className="py-2 px-3 truncate max-w-[150px]">{product.material || 'Kulit / Kanvas'}</td>
-                            <td className="py-2 px-3">Kompartemen Lapang</td>
-                          </>
-                        ) : product.category === 'jeans' || product.category === 'pants' || product.category === 'skirt' ? (
-                          <>
-                            <td className="py-2 px-3">{s.waistCm ? `${s.waistCm} cm` : '-'}</td>
-                            <td className="py-2 px-3">{s.hipsCm ? `${s.hipsCm} cm` : '-'}</td>
-                            <td className="py-2 px-3">{s.thighCm ? `${s.thighCm} cm` : '-'}</td>
-                            <td className="py-2 px-3">{s.garmentLengthCm ? `${s.garmentLengthCm} cm` : '-'}</td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="py-2 px-3">{s.chestBustCm ? `${s.chestBustCm} cm` : '-'}</td>
-                            <td className="py-2 px-3">{s.waistCm ? `${s.waistCm} cm` : '-'}</td>
-                            <td className="py-2 px-3">{s.shoulderWidthCm ? `${s.shoulderWidthCm} cm` : '-'}</td>
-                            <td className="py-2 px-3">{s.garmentLengthCm ? `${s.garmentLengthCm} cm` : '-'}</td>
-                          </>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Description Text */}
-            <div className="space-y-1 text-xs sm:text-sm text-neutral-600 leading-relaxed">
-              <p>{product.description}</p>
-            </div>
-
-            {/* Primary Action Buttons (Sticky on mobile for instant thumb purchase, inline on desktop) */}
-            <div className="fixed bottom-0 left-0 right-0 p-3 pb-5 sm:pb-0 bg-white/95 backdrop-blur-md border-t border-[#DCDAD2] shadow-2xl z-50 flex flex-row gap-2 sm:static sm:p-0 sm:bg-transparent sm:border-none sm:shadow-none sm:z-auto sm:pt-2">
-              {product.externalLink ? (
-                <>
-                  <button
-                    onClick={handleOpenExternalShop}
-                    className="flex-1 py-3.5 sm:py-4 px-3 sm:px-6 rounded-2xl bg-[#162D24] hover:bg-[#203D31] text-white font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer truncate"
-                  >
-                    <ExternalLink className="w-4 h-4 text-[#8EA89D] shrink-0" />
-                    <span className="truncate">Beli di Toko / Shopee</span>
-                  </button>
-
-                  <button
-                    onClick={handleVisitSite}
-                    className="py-3.5 sm:py-4 px-3 sm:px-6 rounded-2xl bg-[#FAF9F5] hover:bg-[#EFECE6] border border-[#162D24] text-[#162D24] font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-1.5 transition-all cursor-pointer shrink-0"
-                  >
-                    <MessageCircle className="w-4 h-4 text-[#2D5A47]" />
-                    <span>WhatsApp</span>
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={handleVisitSite}
-                  className="flex-1 py-3.5 sm:py-4 px-4 sm:px-6 rounded-2xl bg-[#162D24] hover:bg-[#203D31] text-white font-bold text-xs sm:text-sm tracking-wider uppercase flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
-                >
-                  <MessageCircle className="w-4 h-4 text-[#8EA89D]" />
-                  <span>Pesan Sekarang via WhatsApp</span>
-                </button>
+              </ul>
+              {best.size.sizeLabel !== size.sizeLabel && (
+                <p className="mt-2 text-[12px] text-forest">Saran stylist: ukuran {best.size.sizeLabel} ({best.fit.score}%).</p>
               )}
             </div>
-          </div>
+          )}
         </div>
-
-        {/* Related Products */}
-        {relatedProducts.length > 0 && (
-          <div className="pt-6 space-y-4">
-            <h3 className="text-lg font-bold text-[#162D24] font-sans">
-              Rekomendasi Pilihan Terkait Lainnya
-            </h3>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {relatedProducts.map((rel) => (
-                <div
-                  key={rel.id}
-                  onClick={() => onSelectRelated(rel)}
-                  className="bg-white rounded-2xl overflow-hidden shadow-xs hover:shadow-md cursor-pointer transition-all flex flex-col group hover:-translate-y-0.5"
-                >
-                  <div className="aspect-3/4 overflow-hidden bg-neutral-100">
-                    <img
-                      src={rel.imageUrl}
-                      alt={rel.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                  <div className="p-3">
-                    <h4 className="text-xs font-bold text-[#162D24] truncate">{rel.title}</h4>
-                    <p className="text-[11px] text-neutral-500 font-semibold">Rp {rel.price.toLocaleString('id-ID')}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+        <div className="mt-4 flex flex-wrap gap-1.5">
+          {product.tags.map((t) => (
+            <span key={t} className="rounded-full bg-cream-3 px-2.5 py-1 text-[11px] text-muted">#{t}</span>
+          ))}
+        </div>
       </div>
-
-      {/* Store Profile Modal with Story UMKM (Ala IG) */}
-      <StoreProfileModal
-        isOpen={isStoreModalOpen}
-        onClose={() => setIsStoreModalOpen(false)}
-        store={getStoreProfileByNameOrId(product.sellerName)}
-        onShowToast={onShowToast}
-      />
-
-      {/* Comments Modal */}
-      <CommentsModal
-        isOpen={isCommentsModalOpen}
-        onClose={() => setIsCommentsModalOpen(false)}
-        postId={product.id}
-        postTitle={product.title}
-      />
     </div>
   );
-};
+}
+
+function IconAction({ children, onClick, label, active }: { children: React.ReactNode; onClick: () => void; label: string; active?: boolean }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-3.5 text-xs transition active:bg-cream-3 ${
+        active ? 'border-forest bg-sage-soft text-forest' : 'border-line-2 text-ink hover:border-forest/40'
+      }`}
+    >
+      {children}
+      {label}
+    </button>
+  );
+}
+
+function FlatLayOverlay({ size }: { size: GarmentMeasurement }) {
+  const items: string[] = [];
+  if (size.chestBustCm) items.push(`LD ${size.chestBustCm}`);
+  if (size.waistCm) items.push(`LP ${size.waistCm}`);
+  if (size.shoulderWidthCm) items.push(`Bahu ${size.shoulderWidthCm}`);
+  if (size.garmentLengthCm) items.push(`P ${size.garmentLengthCm}`);
+  if (size.insoleCm) items.push(`Insole ${String(size.insoleCm).replace('.', ',')}`);
+  if (size.bagLengthCm) items.push(`${size.bagLengthCm} x ${size.bagWidthCm} x ${size.bagHeightCm}`);
+  return (
+    <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap gap-1.5">
+      {items.map((i) => (
+        <span key={i} className="rounded-md bg-forest/85 px-2 py-1 text-[11px] font-medium tabular-nums text-cream">
+          {i} cm
+        </span>
+      ))}
+    </div>
+  );
+}

@@ -1,81 +1,53 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { geminiConfigured, geminiGenerate } from '@/lib/server/gemini';
+import type { WardrobeCategory } from '@/lib/types';
 
-export async function POST(req: NextRequest) {
+const CATEGORIES: WardrobeCategory[] = ['tops', 'bottoms', 'outerwear', 'dresses', 'shoes', 'bags', 'accessories'];
+const STYLES = ['casual', 'formal', 'minimalist', 'streetwear', 'old_money', 'etnik_modern'];
+const MAX_BYTES = 2_000_000;
+
+export async function POST(req: Request) {
+  if (!geminiConfigured()) {
+    return NextResponse.json({ available: false, reason: 'Pengenal foto belum dikonfigurasi. Warna dibaca dari piksel foto.' });
+  }
+  let image = '';
   try {
-    const { imageUrl }: { imageUrl: string } = await req.json();
+    image = ((await req.json()) as { image?: string }).image ?? '';
+  } catch {
+    return NextResponse.json({ available: false, reason: 'Format permintaan tidak valid.' }, { status: 400 });
+  }
+  const match = image.match(/^data:(image\/(?:jpeg|png|webp));base64,(.+)$/);
+  if (!match || match[2].length * 0.75 > MAX_BYTES) {
+    return NextResponse.json({ available: false, reason: 'Foto harus JPG, PNG, atau WEBP di bawah 2 MB.' }, { status: 400 });
+  }
 
-    if (!imageUrl) {
-      return NextResponse.json({ error: 'Image URL is required' }, { status: 400 });
-    }
+  const raw = await geminiGenerate({
+    system: 'Anda mengenali satu pakaian utama di foto untuk lemari digital. Jawab hanya JSON.',
+    parts: [
+      { inline_data: { mime_type: match[1], data: match[2] } },
+      {
+        text: `Kembalikan JSON: {"name": nama singkat bahasa Indonesia maks 4 kata, "category": salah satu ${CATEGORIES.join('|')}, "colorName": warna dalam bahasa Indonesia, "colorHex": "#RRGGBB", "style": salah satu ${STYLES.join('|')}}`,
+      },
+    ],
+    json: true,
+    temperature: 0.2,
+    maxOutputTokens: 200,
+  });
+  if (!raw) return NextResponse.json({ available: false, reason: 'Pengenal foto sedang tidak bisa dihubungi. Warna dibaca dari piksel foto.' });
 
-    const apiKey = process.env.GEMINI_API_KEY;
-
-    if (!apiKey) {
-      // Disclose honestly that external vision API key is not configured
-      return NextResponse.json({
-        success: true,
-        aiVisionAvailable: false,
-        message: 'Layanan vision API eksternal belum dikonfigurasi. Menggunakan analisis warna lokal.'
-      });
-    }
-
-    // If Gemini key is available, call Google Gemini Vision model
-    try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `Identifikasi pakaian dalam foto ini. Berikan respons dalam format JSON murni:
-{
-  "category": "tops" | "bottoms" | "outerwear" | "dresses" | "shoes" | "bags" | "accessories",
-  "colorName": "string",
-  "colorHex": "string",
-  "pattern": "solid" | "stripes" | "plaid" | "floral" | "batik" | "graphic" | "polka" | "other",
-  "style": "minimalist" | "casual" | "formal" | "streetwear" | "vintage_retro"
-}`
-                  }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.2,
-              responseMimeType: 'application/json'
-            }
-          })
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          const parsed = JSON.parse(text);
-          return NextResponse.json({
-            success: true,
-            aiVisionAvailable: true,
-            ...parsed
-          });
-        }
-      }
-    } catch (apiErr) {
-      console.warn('Gemini vision API error, falling back to local analysis:', apiErr);
-    }
-
+  try {
+    const p = JSON.parse(raw) as Record<string, unknown>;
+    const category = CATEGORIES.includes(p.category as WardrobeCategory) ? (p.category as WardrobeCategory) : null;
+    const hex = typeof p.colorHex === 'string' && /^#[0-9a-fA-F]{6}$/.test(p.colorHex) ? p.colorHex.toUpperCase() : null;
     return NextResponse.json({
-      success: true,
-      aiVisionAvailable: false,
-      message: 'Layanan vision API gagal memproses gambar. Menggunakan deteksi warna lokal.'
+      available: true,
+      name: typeof p.name === 'string' ? p.name.slice(0, 40) : null,
+      category,
+      colorName: typeof p.colorName === 'string' ? p.colorName.slice(0, 20) : null,
+      colorHex: hex,
+      style: STYLES.includes(String(p.style)) ? String(p.style) : null,
     });
-  } catch (error) {
-    return NextResponse.json(
-      { success: false, aiVisionAvailable: false, message: 'Server error' },
-      { status: 500 }
-    );
+  } catch {
+    return NextResponse.json({ available: false, reason: 'Hasil pengenal foto tidak terbaca. Warna dibaca dari piksel foto.' });
   }
 }

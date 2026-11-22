@@ -1,36 +1,54 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Outfitly
 
-## Getting Started
+Platform kurasi fashion lokal Indonesia: UMKM busana (Bandung, Solo, Yogya, Pekalongan, Tasikmalaya), preloved terverifikasi, dan Collab Mitra, dengan panduan ukuran cm nyata, undertone kulit, bentuk tubuh, dan lemari digital.
 
-First, run the development server:
+## Menjalankan
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev        # http://localhost:3000 (Turbopack)
+npm run build      # build produksi
+npm start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Butuh Node.js 20.9 atau lebih baru. Font (Playfair Display, Plus Jakarta Sans) dibundel lewat `@fontsource`, jadi build tidak memerlukan akses ke Google Fonts.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Konsultasi Stylist dan pengenal foto (opsional)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Salin `.env.example` menjadi `.env.local` lalu isi `GEMINI_API_KEY`. Dengan kunci ini, `/api/stylist` menulis ulang jawaban stylist dengan Gemini dan `/api/analyze-clothing` mengenali kategori dan warna foto lemari. Pilihan produk dan hitungan cm tetap dari mesin lokal, jadi jawaban hanya menyebut produk yang ada. Tanpa kunci, keduanya otomatis memakai mesin lokal.
 
-## Learn More
+## Stack
 
-To learn more about Next.js, take a look at the following resources:
+Next.js 16 (App Router, Turbopack, React 19), TypeScript strict, Tailwind CSS v4, Lucide React, canvas-confetti.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Struktur
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+src/
+  app/                 layout, globals.css (token warna & tipografi), page
+  lib/
+    types.ts           kontrak data (UMKMProductPost, WardrobeItem, StoreProfile, ...)
+    data.ts            data mock: 8 toko, 24 produk, lemari, feed komunitas
+    storage.ts         useStored(): localStorage reaktif + event outfitly_<key>, toast bus, overlay registry
+    hooks.ts           hook per entitas (katalog, lemari, favorit, sesi chat, kuota, analitik)
+    sizing.ts          engine kelonggaran kain per kategori, skor 0-100, status tight/ideal/loose
+    color.ts           konversi warna, ekstraksi warna dominan foto, harmoni undertone, Vibe Match
+    stylist.ts         penyusun jawaban Konsultasi Stylist (mode Ringkas & Lengkap)
+  components/
+    AppShell.tsx       navbar, bottom nav, drawer, host semua modal
+    HeroView, CatalogView, WardrobeView, StudioView, StylistView, SellerDashboardView
+    ProductDetailModal, MarketModals (Profil Toko, Perbandingan Ukuran, Komentar, Laporan)
+    AuthModal, Onboarding (6 langkah), MeasurementsModal
+    GarmentArt.tsx     ilustrasi flat-lay SVG untuk produk tanpa foto
+```
 
-## Deploy on Vercel
+## Asal aset
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Logo, foto model hero, ilustrasi bentuk tubuh, kontur wajah, undertone, dan ikon gender di `public/brand/` diambil dari aset Canva proyek `outfit-ai-umkm`, dikecilkan dan latar gelapnya dibuat transparan. Arah desain ada di `DESIGN.md`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Catatan perilaku
+
+- Semua data tersimpan di `localStorage` dengan prefix `outfitly:`. Setiap penulisan memicu `window.dispatchEvent(new Event('outfitly_<key>'))`, sehingga lemari, favorit, toko, dan katalog langsung sinkron lintas komponen (juga lintas tab lewat event `storage`).
+- Setiap modal/drawer mendaftar ke overlay registry; selama ada overlay terbuka, bottom nav mobile disembunyikan (`hidden`) agar tidak menutupi tombol dialog.
+- Kuota Konsultasi Stylist 10 per hari, dikunci per tanggal; tombol reset demo ada di header Stylist.
+- Untuk mengulang demo dari awal: hapus key `outfitly:*` di DevTools > Application > Local Storage.

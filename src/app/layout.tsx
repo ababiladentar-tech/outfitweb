@@ -1,33 +1,31 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+import type { Metadata, Viewport } from 'next';
+import '@fontsource/playfair-display/400.css';
+import '@fontsource/playfair-display/500.css';
+import '@fontsource/playfair-display/600.css';
+import '@fontsource/playfair-display/400-italic.css';
+import '@fontsource/playfair-display/500-italic.css';
+import '@fontsource/plus-jakarta-sans/400.css';
+import '@fontsource/plus-jakarta-sans/500.css';
+import '@fontsource/plus-jakarta-sans/600.css';
+import '@fontsource/plus-jakarta-sans/700.css';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Outfitly: Temukan Gaya & Ukuran Pas | Kurasi Fashion UMKM Lokal",
-  description: "Temukan paduan outfit terbaik sesuai rona warna, siluet tubuh, dan ukuran sentimeter (cm) akurat dengan kurasi produk UMKM fashion lokal dan thrift terverifikasi.",
+  title: 'Outfitly. Kurasi Fashion Lokal Indonesia',
+  description:
+    'Kurasi busana UMKM Bandung, Solo, Yogya, Pekalongan, dan Tasikmalaya dengan panduan ukuran cm nyata, undertone kulit, dan lemari digital.',
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  themeColor: '#162D24',
+};
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html
-      lang="id"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-[#EFEFEA] text-[#162D24]">{children}</body>
+    <html lang="id">
+      <body className="min-h-dvh bg-cream">{children}</body>
     </html>
   );
 }
