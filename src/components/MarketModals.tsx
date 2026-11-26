@@ -6,6 +6,7 @@ import { ProductCard } from './ProductCard';
 import { ProductImage } from './GarmentArt';
 import { DemoNote, Modal, btnGhost, btnPrimary, inputCls, labelCls } from './ui';
 import { CATEGORY_LABEL, SELLER_TYPE_LABEL } from '@/lib/data';
+import { submitReport } from '@/lib/cloud/sync';
 import { useCatalog, useComments, useFollowing, useProfile, useSession, useStores, useTrack } from '@/lib/hooks';
 import { evaluateFit, FIT_LABEL, fitTone } from '@/lib/sizing';
 import { emitToast, formatCount, formatIDR, uid, useHydrated } from '@/lib/storage';
@@ -454,6 +455,7 @@ export function ReportModal({ productId, onClose }: { productId: string | null; 
             type="button"
             className={`${btnPrimary} flex-1`}
             onClick={() => {
+              if (productId) submitReport(productId, note.trim() ? `${reason}: ${note.trim()}` : reason).catch(() => undefined);
               emitToast('Laporan diterima. Tim kurasi akan meninjau dalam 1 x 24 jam.');
               setNote('');
               onClose();

@@ -1,3 +1,4 @@
+import { EXTRA_SEEDS, EXTRA_STORES } from './catalog-extra';
 import type {
   AppNotification,
   BodyMeasurements,
@@ -60,7 +61,7 @@ export const STYLE_LABEL: Record<StylePreference, string> = {
   etnik_modern: 'Etnik Modern',
 };
 
-export const CITIES = ['Bandung', 'Solo', 'Yogya', 'Pekalongan', 'Tasikmalaya'] as const;
+export const CITIES = ['Bandung', 'Solo', 'Yogya', 'Pekalongan', 'Tasikmalaya', 'Lasem', 'Garut', 'Jakarta', 'Surabaya', 'Malang', 'Denpasar', 'Makassar'] as const;
 
 /* ---------- Defaults ---------- */
 
@@ -91,7 +92,7 @@ export const DEFAULT_ANALYTICS: Record<string, StoreAnalytics> = {};
 
 /* ---------- Stores ---------- */
 
-export const STORES: StoreProfile[] = [
+const BASE_STORES: StoreProfile[] = [
   {
     id: 's_senja',
     name: 'Atelier Senja',
@@ -213,6 +214,8 @@ export const STORES: StoreProfile[] = [
     avatarHex: '#3A2A1F',
   },
 ];
+
+export const STORES: StoreProfile[] = [...BASE_STORES, ...EXTRA_STORES];
 
 /* ---------- Products ---------- */
 
@@ -455,7 +458,7 @@ const storeById = (id: string): StoreProfile => {
   return s;
 };
 
-export const SEED_PRODUCTS: UMKMProductPost[] = SEEDS.map((s) => {
+export const SEED_PRODUCTS: UMKMProductPost[] = [...SEEDS, ...(EXTRA_SEEDS as Seed[])].map((s) => {
   const store = storeById(s.store);
   return {
     id: s.id,
@@ -478,7 +481,7 @@ export const SEED_PRODUCTS: UMKMProductPost[] = SEEDS.map((s) => {
     stockCount: s.stockCount,
     isAvailable: s.stockCount > 0,
     availableSizes: s.sizes,
-    imageUrl: s.photo ? productPhoto(s.photo) : `art:${s.art}`,
+    imageUrl: s.photo ? `${productPhoto(s.photo)}#art:${s.art}` : `art:${s.art}`,
     material: s.material,
     stretch: s.stretch,
     likes: s.likes,
@@ -541,7 +544,9 @@ export const SEED_COMMENTS: ProductComment[] = [];
 
 export const SEED_NOTIFICATIONS: AppNotification[] = [
   { id: 'n1', title: 'Isi ukuran tubuh Anda', body: 'Panduan Ukuran (cm) memakai angka bawaan sampai Anda mengisi LD, LP, dan bahu sendiri.', read: false, createdAt: daysAgoIso(0) },
-  { id: 'n2', title: 'Ini versi demo', body: 'Toko, produk, dan harga di katalog adalah data contoh. Semua data Anda tersimpan di browser ini saja.', read: false, createdAt: daysAgoIso(0) },
+  { id: 'n2', title: 'Ini versi demo', body: process.env.NEXT_PUBLIC_SUPABASE_URL
+    ? 'Toko, produk, dan harga di katalog adalah data contoh. Masuk agar profil, lemari, dan outfit Anda tersimpan di akun.'
+    : 'Toko, produk, dan harga di katalog adalah data contoh. Semua data Anda tersimpan di browser ini saja.', read: false, createdAt: daysAgoIso(0) },
 ];
 
 /* ---------- Hero showcase ---------- */

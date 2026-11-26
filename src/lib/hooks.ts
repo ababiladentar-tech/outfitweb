@@ -10,8 +10,9 @@ import {
   SEED_PRODUCTS,
   STORES,
 } from './data';
-import { STORE_KEYS, emitToast, useStored } from './storage';
+import { STORE_KEYS, emitToast, readStore, useStored, writeStore } from './storage';
 import type {
+  AgentOutfit,
   AppNotification,
   ChatSession,
   CommunityPost,
@@ -25,6 +26,8 @@ import type {
 } from './types';
 
 export interface AuthSession {
+  /** Supabase user id when signed in to the hosted database. */
+  id?: string;
   name: string;
   email: string;
   provider: 'email' | 'google' | 'x' | 'facebook';
@@ -38,6 +41,8 @@ export interface ChatQuota {
 export interface Handoff {
   target: 'studio' | 'stylist';
   wardrobeIds: string[];
+  /** Outfit from the stylist agent to open in Studio as is. */
+  outfit?: AgentOutfit;
   at: number;
 }
 
@@ -111,4 +116,58 @@ export function useLikeProduct() {
       emitToast(added ? 'Ditambahkan ke favorit' : 'Dihapus dari favorit', 'info');
     },
   };
+}
+
+/** Adds products to favourites without toggling off ones already there (used by the stylist agent). */
+export function useAddFavorites() {
+  const [, setIds] = useStored<string[]>(STORE_KEYS.favorites, EMPTY_IDS);
+  const [, setCatalog] = useCatalog();
+  return useCallback(
+    (ids: string[]): number => {
+      let added: string[] = [];
+      setIds((prev) => {
+        added = ids.filter((id) => !prev.includes(id));
+        return added.length ? [...prev, ...added] : prev;
+      });
+      if (added.length) setCatalog((prev) => prev.map((p) => (added.includes(p.id) ? { ...p, likes: p.likes + 1 } : p)));
+      return added.length;
+    },
+    [setIds, setCatalog],
+  );
+}
+
+/**
+ * Browsers that opened an older demo keep their saved catalog in localStorage,
+ * so new demo stores and products would never appear. Add any that are missing
+ * (keeping the browser's own edits) once per catalog version.
+ */
+const CATALOG_VERSION = 2;
+
+export function migrateDemoCatalog(): void {
+  if (typeof window === 'undefined') return;
+  const key = 'outfitly:catalog_version';
+  try {
+    if (Number(window.localStorage.getItem(key)) >= CATALOG_VERSION) return;
+    const stores = readStore<StoreProfile[] | null>(STORE_KEYS.stores, null);
+    if (stores) {
+      const have = new Set(stores.map((s) => s.id));
+      const add = STORES.filter((s) => !have.has(s.id));
+      if (add.length) writeStore(STORE_KEYS.stores, [...stores, ...add], { silent: true });
+    }
+    const catalog = readStore<UMKMProductPost[] | null>(STORE_KEYS.catalog, null);
+    if (catalog) {
+      const seeds = new Map(SEED_PRODUCTS.map((p) => [p.id, p]));
+      const have = new Set(catalog.map((p) => p.id));
+      // Seed products keep the browser's like counts but take the new title, photo and sizes.
+      const updated = catalog.map((p) => {
+        const s = seeds.get(p.id);
+        return s ? { ...s, likes: p.likes, saves: p.saves, stockCount: p.stockCount, isAvailable: p.isAvailable } : p;
+      });
+      const add = SEED_PRODUCTS.filter((p) => !have.has(p.id));
+      writeStore(STORE_KEYS.catalog, [...updated, ...add], { silent: true });
+    }
+    window.localStorage.setItem(key, String(CATALOG_VERSION));
+  } catch {
+    /* storage unavailable: the app falls back to the built-in catalog */
+  }
 }

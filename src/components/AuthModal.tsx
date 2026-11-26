@@ -5,6 +5,16 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { Modal, btnPrimary, inputCls, labelCls } from './ui';
 import { useProfile, useSession, type AuthSession } from '@/lib/hooks';
 import { emitToast } from '@/lib/storage';
+import { cloudEnabled, supabase } from '@/lib/cloud/client';
+
+const AUTH_ERRORS: [RegExp, string][] = [
+  [/invalid login credentials/i, 'Email atau kata sandi salah.'],
+  [/email not confirmed/i, 'Email belum dikonfirmasi. Buka tautan di email Anda dulu.'],
+  [/already registered|already been registered/i, 'Email ini sudah terdaftar. Silakan masuk.'],
+  [/rate limit|too many/i, 'Terlalu banyak percobaan. Tunggu sebentar lalu coba lagi.'],
+  [/provider is not enabled/i, 'Login Google belum diaktifkan di Supabase.'],
+];
+const authError = (msg: string): string => AUTH_ERRORS.find(([re]) => re.test(msg))?.[1] ?? msg;
 
 const RULES: { label: string; test: (p: string) => boolean }[] = [
   { label: 'Minimal 8 karakter', test: (p) => p.length >= 8 },
@@ -72,6 +82,9 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
   const [password, setPassword] = useState('');
   const [show, setShow] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [sent, setSent] = useState<string | null>(null);
+  const cloud = cloudEnabled();
   const [, setSession] = useSession();
   const [, setProfile] = useProfile();
 
@@ -89,6 +102,19 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
 
   const social = (provider: AuthSession['provider'], label: string): void => {
     setBusy(provider);
+    const sb = supabase();
+    if (sb) {
+      setError(null);
+      sb.auth
+        .signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
+        .then(({ error: e }) => {
+          if (e) {
+            setBusy(null);
+            setError(authError(e.message));
+          }
+        });
+      return;
+    }
     window.setTimeout(() => {
       setBusy(null);
       finish({ name: `Pengguna ${label}`, email: `pengguna.${provider}@outfitly.id`, provider }, tab === 'signup');
@@ -99,12 +125,48 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
     e.preventDefault();
     if (!canSubmit) return;
     setBusy('email');
+    const sb = supabase();
+    if (sb) {
+      setError(null);
+      const req =
+        tab === 'signup'
+          ? sb.auth.signUp({ email, password, options: { data: { name: name.trim() }, emailRedirectTo: window.location.origin } })
+          : sb.auth.signInWithPassword({ email, password });
+      req.then(({ data, error: e }) => {
+        setBusy(null);
+        if (e) {
+          setError(authError(e.message));
+          return;
+        }
+        if (!data.session) {
+          // Email confirmation is on: the account exists but needs the link first.
+          setSent(email);
+          return;
+        }
+        // The cloud sync fills the session and loads the account's data.
+        setProfile((p) => (tab === 'signup' ? { ...p, name: name.trim(), email } : p));
+        const nm = tab === 'signup' ? name.trim() : (data.user?.user_metadata?.name as string | undefined) ?? email.split('@')[0];
+        emitToast(tab === 'signup' ? `Akun dibuat. Halo, ${nm.split(' ')[0]}` : `Selamat datang kembali, ${nm.split(' ')[0]}`);
+        onAuthed(tab === 'signup');
+      });
+      return;
+    }
     window.setTimeout(() => {
       setBusy(null);
       const nm = tab === 'signup' ? name.trim() : email.split('@')[0].replace(/[._]/g, ' ');
       finish({ name: nm.replace(/\b\w/g, (c) => c.toUpperCase()), email, provider: 'email' }, tab === 'signup');
     }, 500);
   };
+
+  if (sent) {
+    return (
+      <div className="p-6 text-center">
+        <p className="font-serif text-xl text-forest">Cek email Anda</p>
+        <p className="mt-2 text-sm text-muted">Tautan konfirmasi sudah dikirim ke <span className="font-medium text-forest">{sent}</span>. Buka tautan itu, lalu Anda otomatis masuk.</p>
+        <button type="button" className={`${btnPrimary} mt-5 w-full`} onClick={() => { setSent(null); setTab('login'); }}>Sudah konfirmasi, masuk</button>
+      </div>
+    );
+  }
 
   return (
     <div className="p-5 md:p-6">
@@ -121,12 +183,15 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
         ))}
       </div>
 
-      <div className="mt-5 grid grid-cols-3 gap-2">
-        {([
-          ['google', 'Google', <GoogleMark key="g" />],
-          ['x', 'X', <XMark key="x" />],
-          ['facebook', 'Facebook', <FbMark key="f" />],
-        ] as const).map(([id, label, icon]) => (
+      <div className={`mt-5 grid gap-2 ${cloud ? 'grid-cols-1' : 'grid-cols-3'}`}>
+        {(cloud
+          ? ([['google', 'Lanjutkan dengan Google', <GoogleMark key="g" />]] as const)
+          : ([
+              ['google', 'Google', <GoogleMark key="g" />],
+              ['x', 'X', <XMark key="x" />],
+              ['facebook', 'Facebook', <FbMark key="f" />],
+            ] as const)
+        ).map(([id, label, icon]) => (
           <button
             key={id}
             type="button"
@@ -180,11 +245,12 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
             ))}
           </ul>
         )}
+        {error && <p role="alert" className="rounded-lg bg-[#F7E1E3] px-3 py-2 text-[12.5px] text-[#8A2F3B]">{error}</p>}
         <button type="submit" className={`${btnPrimary} w-full`} disabled={!canSubmit || busy !== null}>
           {busy === 'email' && <Loader2 className="size-4 animate-spin" />}
           {tab === 'login' ? 'Masuk' : 'Buat Akun'}
         </button>
-        <p className="text-center text-[11px] text-muted">Data demo tersimpan lokal di browser Anda.</p>
+        <p className="text-center text-[11px] text-muted">{cloud ? 'Profil, lemari, dan outfit Anda tersimpan di akun dan ikut ke perangkat lain.' : 'Mode demo: data tersimpan lokal di browser Anda.'}</p>
       </form>
     </div>
   );

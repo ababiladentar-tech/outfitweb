@@ -26,14 +26,14 @@ export interface StylistReply {
   productIds: string[];
 }
 
-const OCCASIONS: { re: RegExp; key: string; label: string }[] = [
+export const OCCASION_WORDS: { re: RegExp; key: string; label: string }[] = [
   { re: /(kondangan|nikah|resepsi|wisuda|lamaran)/i, key: 'kondangan', label: 'kondangan' },
   { re: /(kantor|kerja|meeting|interview|wawancara|presentasi)/i, key: 'kantor', label: 'ke kantor' },
   { re: /(kuliah|kampus|kelas|sekolah)/i, key: 'kuliah', label: 'ke kampus' },
   { re: /(weekend|akhir pekan|jalan|nongkrong|ngopi|mall)/i, key: 'weekend', label: 'akhir pekan' },
 ];
 
-const CATEGORY_WORDS: { re: RegExp; cats: ProductCategory[] }[] = [
+export const CATEGORY_WORDS: { re: RegExp; cats: ProductCategory[] }[] = [
   { re: /(jeans|denim)/i, cats: ['jeans'] },
   { re: /(celana|kulot|chino|rok|bawahan)/i, cats: ['pants', 'jeans'] },
   { re: /(outer|jaket|blazer|cardigan|kimono)/i, cats: ['outerwear'] },
@@ -44,7 +44,7 @@ const CATEGORY_WORDS: { re: RegExp; cats: ProductCategory[] }[] = [
   { re: /(kemeja|atasan|blouse|tunik|batik)/i, cats: ['top'] },
 ];
 
-const TONE_TEXT: Record<SkinTone, string> = {
+export const TONE_TEXT: Record<SkinTone, string> = {
   warm:
     'Undertone hangat, khas kulit sawo matang, paling hidup dengan warna tanah: camel, coklat soga, olive, krem gading, dan terracotta. Hindari abu dingin yang terlalu pucat di dekat wajah karena membuat kulit tampak kusam.',
   cool:
@@ -53,7 +53,7 @@ const TONE_TEXT: Record<SkinTone, string> = {
     'Undertone netral memberi Anda keleluasaan paling besar. Kunci harmoninya ada pada kontras: padukan satu warna gelap sebagai jangkar dengan satu warna terang di dekat wajah.',
 };
 
-const SHAPE_TEXT: Record<BodyShape, string> = {
+export const SHAPE_TEXT: Record<BodyShape, string> = {
   hourglass: 'Bentuk hourglass: tonjolkan garis pinggang dengan tali pinggang atau potongan wrap, hindari atasan boxy yang menutup lekuk.',
   pear: 'Bentuk pear: beri volume dan detail di bagian atas (kerah, bahu terstruktur), lalu pilih bawahan wide leg atau A-line berwarna lebih gelap.',
   apple: 'Bentuk apple: gunakan garis vertikal panjang seperti outer kimono terbuka dan bahan yang jatuh, hindari potongan ketat di perut.',
@@ -64,7 +64,7 @@ const SHAPE_TEXT: Record<BodyShape, string> = {
   trapezoid: 'Bentuk trapezoid: hampir semua potongan regular dan straight cocok. Jaga proporsi dengan celana straight yang tidak terlalu ketat.',
 };
 
-function parseBudget(text: string): number | null {
+export function parseBudget(text: string): number | null {
   const juta = text.match(/(\d+(?:[.,]\d+)?)\s*(jt|juta)/i);
   if (juta) return parseFloat(juta[1].replace(',', '.')) * 1_000_000;
   const rb = text.match(/(\d{2,4})\s*(rb|ribu|k)\b/i);
@@ -76,7 +76,7 @@ function parseBudget(text: string): number | null {
 
 export function composeReply(input: StylistInput): StylistReply {
   const { text, mode, profile, catalog, wardrobe, attachedImageHex } = input;
-  const occasion = OCCASIONS.find((o) => o.re.test(text));
+  const occasion = OCCASION_WORDS.find((o) => o.re.test(text));
   const cats = CATEGORY_WORDS.filter((c) => c.re.test(text)).flatMap((c) => c.cats);
   const budget = parseBudget(text);
   const asksSize = /(ukuran|size|cm|pas|longgar|sempit|kelonggaran)/i.test(text);
@@ -185,9 +185,10 @@ export function composeReply(input: StylistInput): StylistReply {
 }
 
 export const QUICK_SUGGESTIONS: string[] = [
-  'Outfit kondangan siang untuk kulit sawo matang',
-  'Jeans yang pas untuk pinggang saya',
-  'Padu padan ke kantor di bawah 600rb',
+  'Buatin susunan outfit seminggu ke kampus, budget 1 juta',
+  'Minggu ini ada kuliah, interview, dan kondangan. Budget 1 juta, susun dan simpan semuanya',
+  'Pinggang saya sekarang 75 cm, carikan jeans yang pas',
+  'Outfit kantor di bawah 600rb pakai baju dari lemari, buka di Studio',
   'Outer untuk ke kampus saat hujan',
-  'Warna yang cocok untuk undertone saya',
+  'Bandingkan blazer dan outer yang cocok untuk undertone saya',
 ];

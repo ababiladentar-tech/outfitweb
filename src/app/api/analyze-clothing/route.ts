@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { geminiConfigured, geminiGenerate } from '@/lib/server/gemini';
+import { cloudConfigured, userFromRequest } from '@/lib/server/supabase';
 import type { WardrobeCategory } from '@/lib/types';
 
 const CATEGORIES: WardrobeCategory[] = ['tops', 'bottoms', 'outerwear', 'dresses', 'shoes', 'bags', 'accessories'];
@@ -9,6 +10,10 @@ const MAX_BYTES = 2_000_000;
 export async function POST(req: Request) {
   if (!geminiConfigured()) {
     return NextResponse.json({ available: false, reason: 'Pengenal foto belum dikonfigurasi. Warna dibaca dari piksel foto.' });
+  }
+  // Hosted with a database: only signed-in users may spend the model key.
+  if (cloudConfigured() && !(await userFromRequest(req))) {
+    return NextResponse.json({ available: false, reason: 'Masuk untuk memakai pengenal foto. Warna dibaca dari piksel foto.' });
   }
   let image = '';
   try {
@@ -31,7 +36,7 @@ export async function POST(req: Request) {
     ],
     json: true,
     temperature: 0.2,
-    maxOutputTokens: 200,
+    maxOutputTokens: 1024,
   });
   if (!raw) return NextResponse.json({ available: false, reason: 'Pengenal foto sedang tidak bisa dihubungi. Warna dibaca dari piksel foto.' });
 

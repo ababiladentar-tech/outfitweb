@@ -1,6 +1,6 @@
 'use client';
 
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import { isLight, shade } from '@/lib/color';
 
 type Pattern = 'plain' | 'stripe' | 'batik' | 'denim' | 'knit' | 'embroidery' | 'pleat' | 'satin' | 'twill';
@@ -353,10 +353,16 @@ export function ProductImage({
   className?: string;
   background?: string;
 }) {
-  const art = parseArt(src, colors);
+  // A photo URL may carry its illustration as a fragment (photo.jpg#art:shirt:plain);
+  // the browser never sends the fragment, and it is drawn if the photo fails.
+  const hash = src.indexOf('#art:');
+  const photo = hash >= 0 ? src.slice(0, hash) : src;
+  const fallback = hash >= 0 ? src.slice(hash + 1) : null;
+  const [failed, setFailed] = useState<string | null>(null);
+  const art = parseArt(failed === photo && fallback ? fallback : photo, colors);
   if (art) return <GarmentArt {...art} background={background} className={`h-full w-full ${className}`} title={alt} />;
   return (
     // eslint-disable-next-line @next/next/no-img-element
-    <img src={src} alt={alt} width={720} height={900} decoding="async" className={`h-full w-full object-cover ${className}`} loading="lazy" />
+    <img src={photo} alt={alt} width={720} height={900} decoding="async" onError={() => setFailed(photo)} className={`h-full w-full object-cover ${className}`} loading="lazy" />
   );
 }

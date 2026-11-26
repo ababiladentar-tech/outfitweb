@@ -1,9 +1,14 @@
 import { NextResponse } from 'next/server';
-import { composeReply } from '@/lib/stylist';
-import { bestSize } from '@/lib/sizing';
-import { cleanCopy, formatIDR } from '@/lib/format';
-import { geminiGenerate } from '@/lib/server/gemini';
-import type { ChatMode, UMKMProductPost, UserProfile, WardrobeItem } from '@/lib/types';
+import { runLocalAgent } from '@/lib/agent/local';
+import { runModelAgent } from '@/lib/agent/run';
+import { createContext } from '@/lib/agent/tools';
+import { nearestColorName } from '@/lib/color';
+import { geminiConfigured, geminiToolTurn, lastGeminiError } from '@/lib/server/gemini';
+import { cloudConfigured, consumeAiQuota, userFromRequest } from '@/lib/server/supabase';
+import type { AgentReply, ChatMode, UMKMProductPost, UserProfile, WardrobeItem } from '@/lib/types';
+
+/** The agent may take several model turns; allow up to a minute on Vercel. */
+export const maxDuration = 60;
 
 interface Body {
   text?: string;
@@ -11,6 +16,7 @@ interface Body {
   profile?: UserProfile;
   catalog?: UMKMProductPost[];
   wardrobe?: WardrobeItem[];
+  attachedWardrobeIds?: string[];
   attachedImageHex?: string;
   history?: { role: 'user' | 'stylist'; text: string }[];
 }
@@ -28,49 +34,47 @@ export async function POST(req: Request) {
   }
   const mode: ChatMode = body.mode === 'lengkap' ? 'lengkap' : 'ringkas';
   const catalog = body.catalog.slice(0, 300);
-  const wardrobe = (body.wardrobe ?? []).slice(0, 12);
-  const profile = body.profile;
+  const wardrobe = (body.wardrobe ?? []).slice(0, 60).map((w) => ({ ...w, imageUrl: w.imageUrl.startsWith('data:') ? '' : w.imageUrl }));
+  const attachedWardrobeIds = (body.attachedWardrobeIds ?? []).filter((id) => wardrobe.some((w) => w.id === id));
+  const hex = typeof body.attachedImageHex === 'string' && /^#[0-9a-fA-F]{6}$/.test(body.attachedImageHex) ? body.attachedImageHex : undefined;
 
-  // Product choice and fit maths always come from the local engine, so the
-  // writer below can only describe items that exist, with real cm figures.
-  const local = composeReply({ text, mode, profile, catalog, wardrobe, attachedImageHex: body.attachedImageHex });
+  const ctx = createContext(body.profile, catalog, wardrobe);
+  const local = (): AgentReply => runLocalAgent({ text, mode, ctx, attachedImageHex: hex, attachedWardrobeIds });
 
-  const picked = local.productIds
-    .map((id) => catalog.find((p) => p.id === id))
-    .filter((p): p is UMKMProductPost => Boolean(p))
-    .map((p) => {
-      const fit = bestSize(p, profile.measurements);
-      return `- ${p.title} | ${p.sellerName}, ${p.sellerCity} | ${formatIDR(p.price)} | bahan ${p.material ?? '-'} | ukuran ${fit.size.sizeLabel}, kecocokan ${fit.fit.score}% (${fit.fit.notes.join(' ')})`;
-    })
-    .join('\n');
+  if (!geminiConfigured()) return NextResponse.json(local());
 
-  const system = [
-    'Anda adalah stylist manusia di Outfitly, platform kurasi busana UMKM dan preloved Indonesia.',
-    'Tulis dalam bahasa Indonesia yang hangat dan lugas, tanpa emoji, tanpa tanda pisah panjang, tanpa markdown tebal.',
-    'Hanya sebut produk dari daftar yang diberikan, dengan nama, toko, dan harga persis. Jangan mengarang produk, diskon, garansi, atau klaim lain.',
-    'Jangan menyebut diri sebagai AI, model, atau algoritma.',
-    mode === 'ringkas'
-      ? 'Mode Ringkas: maksimal 90 kata. Satu kalimat pembuka, lalu daftar bernomor produk dengan toko dan harga, lalu satu saran singkat.'
-      : 'Mode Konsultasi Lengkap: 150 sampai 260 kata. Bahas harmoni warna terhadap undertone, siluet terhadap bentuk tubuh, dan kelonggaran kain dalam cm memakai angka yang diberikan.',
-  ].join(' ');
+  // With a database configured, model calls need a signed-in user and count
+  // against a daily quota, so a public deployment cannot drain the API key.
+  let notice: string | undefined;
+  if (cloudConfigured()) {
+    const auth = await userFromRequest(req);
+    if (!auth) {
+      return NextResponse.json({ ...local(), notice: 'Masuk untuk memakai Stylist Agent berbasis Gemini. Jawaban ini disusun mesin lokal.' });
+    }
+    const left = await consumeAiQuota(auth.db);
+    if (left < 0) {
+      return NextResponse.json({ ...local(), notice: 'Kuota Stylist Agent hari ini habis. Jawaban ini disusun mesin lokal.', quotaLeft: 0 });
+    }
+  }
 
-  const facts = [
-    `Profil: undertone ${profile.skinTone}, bentuk tubuh ${profile.bodyShape}, wajah ${profile.faceShape}, LD ${profile.measurements.chestCm} cm, LP ${profile.measurements.waistCm} cm, bahu ${profile.measurements.shoulderCm} cm, tinggi ${profile.measurements.heightCm} cm, gaya ${profile.styles.join(', ')}.`,
-    wardrobe.length ? `Dari lemari pengguna: ${wardrobe.map((w) => `${w.name} (${w.color})`).join(', ')}.` : '',
-    body.attachedImageHex ? `Foto terlampir dengan warna dominan ${body.attachedImageHex}.` : '',
-    `Produk yang dipilih:\n${picked || '(tidak ada yang cocok)'}`,
-    `Draf faktual dari tim (pakai angkanya, perbaiki gayanya):\n${local.text}`,
-    `Pertanyaan pengguna: ${text}`,
-  ]
-    .filter(Boolean)
-    .join('\n\n');
-
+  const attachments = [
+    attachedWardrobeIds.length ? `Item lemari yang dilampirkan (wajib dipakai jika menyusun outfit): ${attachedWardrobeIds.map((id) => { const w = wardrobe.find((x) => x.id === id); return w ? `${w.name} [${w.id}]` : id; }).join(', ')}.` : '',
+    hex ? `Pengguna melampirkan foto pakaian dengan warna dominan ${nearestColorName(hex)} (${hex}).` : '',
+  ];
   const history = (body.history ?? []).slice(-6).map((h) => ({ role: h.role === 'user' ? ('user' as const) : ('model' as const), text: h.text.slice(0, 1200) }));
-  const written = await geminiGenerate({ system, parts: [{ text: facts }], history, temperature: 0.55 });
 
-  return NextResponse.json({
-    text: written ? cleanCopy(written) : local.text,
-    productIds: local.productIds,
-    source: written ? 'gemini' : 'local',
-  });
+  const reply = await runModelAgent({ text, mode, ctx, history, attachments, turn: geminiToolTurn });
+  if (reply) return NextResponse.json({ ...reply, notice });
+
+  // Model unreachable: start over with a clean context so no half-run steps leak in.
+  const fresh = createContext(body.profile, catalog, wardrobe);
+  const why = lastGeminiError ?? '';
+  const hint = /HTTP 404/.test(why)
+    ? 'Model Gemini tidak tersedia untuk API key ini. Ganti GEMINI_MODEL di .env.local (lihat pesan di log server), lalu restart server.'
+    : /HTTP 40[013]/.test(why)
+    ? 'API key Gemini ditolak. Cek GEMINI_API_KEY di .env.local (key dari aistudio.google.com biasanya diawali AIza), lalu restart server.'
+    : /HTTP (429|500|503)/.test(why)
+    ? 'Server Gemini sedang penuh dari sisi Google, model cadangan juga sibuk. Coba kirim lagi sebentar lagi.'
+    : 'Gemini sedang tidak bisa dihubungi.';
+  return NextResponse.json({ ...runLocalAgent({ text, mode, ctx: fresh, attachedImageHex: hex, attachedWardrobeIds }), notice: `${hint} Jawaban ini disusun mesin lokal.` });
 }

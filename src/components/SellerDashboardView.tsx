@@ -7,7 +7,9 @@ import { ProductImage } from './GarmentArt';
 import { btnGhost, btnPrimary, inputCls, labelCls } from './ui';
 import { CATEGORY_LABEL, CITIES, CONDITION_LABEL, SELLER_TYPE_LABEL, STYLE_LABEL } from '@/lib/data';
 import { compressImage, extractGarmentInfo, nearestColorName } from '@/lib/color';
-import { useAnalytics, useCatalog, useNotifications, useSellerStoreId, useStores } from '@/lib/hooks';
+import { useAnalytics, useCatalog, useNotifications, useSellerStoreId, useSession, useStores } from '@/lib/hooks';
+import { cloudEnabled } from '@/lib/cloud/client';
+import { claimStore } from '@/lib/cloud/sync';
 import { emitToast, formatCount, formatIDR, uid, useHydrated } from '@/lib/storage';
 import type { GarmentMeasurement, ProductCategory, ProductCondition, StoreProfile, UMKMProductPost } from '@/lib/types';
 
@@ -21,10 +23,21 @@ const TABS: { key: Tab; label: string; icon: React.ReactNode }[] = [
 ];
 
 export function SellerDashboardView() {
-  const [stores] = useStores();
+  const [allStores] = useStores();
+  const [session] = useSession();
   const [storeId, setStoreId] = useSellerStoreId();
   const [tab, setTab] = useState<Tab>('catalog');
+  const [adding, setAdding] = useState(false);
+  const hydrated = useHydrated();
+  const cloud = cloudEnabled();
+  // Hosted mode: a seller only manages stores tied to their account.
+  const stores = cloud ? allStores.filter((s) => session?.id && s.ownerId === session.id) : allStores;
   const store = stores.find((s) => s.id === storeId) ?? stores[0];
+
+  if (cloud && hydrated && (!session?.id || !store || adding)) {
+    return <StoreSetup signedIn={!!session?.id} onReady={(id) => { setStoreId(id); setAdding(false); setTab('catalog'); }} onCancel={store ? () => setAdding(false) : undefined} />;
+  }
+  if (!store) return null;
 
   return (
     <div className="mx-auto max-w-7xl px-4 pb-16 pt-6 md:px-8 md:pt-10">
@@ -40,6 +53,11 @@ export function SellerDashboardView() {
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
           </select>
+          {cloud && (
+            <button type="button" onClick={() => setAdding(true)} className="grid size-11 place-items-center rounded-full border border-line-2 text-forest hover:bg-cream-2" aria-label="Tambah toko">
+              <Plus className="size-4" />
+            </button>
+          )}
         </label>
       </div>
 
@@ -476,6 +494,130 @@ function ProfileTab({ store }: { store: StoreProfile }) {
           <p className="text-xs text-muted">{draft.city} . {draft.instagram}</p>
           <p className="mt-3 text-[13px] text-ink/80">{draft.bio}</p>
           <p className="mt-3 border-l-2 border-coral pl-3 font-serif text-sm italic text-forest">{draft.story}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Hosted mode: sign in, then claim a demo store or open a new one. */
+function StoreSetup({ signedIn, onReady, onCancel }: { signedIn: boolean; onReady: (id: string) => void; onCancel?: () => void }) {
+  const [stores, setStores] = useStores();
+  const [session] = useSession();
+  const { openAuth } = useApp();
+  const [busy, setBusy] = useState<string | null>(null);
+  const [name, setName] = useState('');
+  const [city, setCity] = useState<string>(CITIES[0]);
+  const [type, setType] = useState<StoreProfile['sellerType']>('umkm');
+  const [wa, setWa] = useState('');
+  const unclaimed = stores.filter((s) => !s.ownerId);
+  const waOk = /^62\d{8,13}$/.test(wa.replace(/\D/g, ''));
+
+  if (!signedIn) {
+    return (
+      <div className="mx-auto max-w-lg px-4 py-16 text-center">
+        <Store className="mx-auto size-8 text-forest" strokeWidth={1.3} />
+        <h1 className="mt-3 font-serif text-[32px] leading-tight text-forest">Dashboard <em>Penjual</em></h1>
+        <p className="mt-2 text-sm text-muted">Masuk dulu supaya produk, foto, dan statistik toko tersimpan di akun Anda dan tampil untuk semua pembeli.</p>
+        <button type="button" className={`${btnPrimary} mt-6`} onClick={() => openAuth('login')}>Masuk / Daftar</button>
+      </div>
+    );
+  }
+
+  const claim = async (id: string): Promise<void> => {
+    setBusy(id);
+    try {
+      const ok = await claimStore(id);
+      if (ok) {
+        emitToast('Toko sekarang terhubung ke akun Anda');
+        onReady(id);
+      } else emitToast('Toko ini sudah dikelola akun lain', 'error');
+    } catch {
+      emitToast('Gagal menghubungkan toko. Coba lagi.', 'error');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const create = (): void => {
+    if (name.trim().length < 2 || !waOk || !session?.id) return;
+    const id = uid('s');
+    const s: StoreProfile = {
+      id,
+      name: name.trim(),
+      city,
+      followerCount: 0,
+      contactNumber: wa.replace(/\D/g, ''),
+      bio: '',
+      story: '',
+      sellerType: type,
+      bannerHex: '#C9B9A2',
+      avatarHex: '#162D24',
+      ownerId: session.id,
+    };
+    setStores((prev) => [...prev, s]);
+    emitToast('Toko dibuat');
+    onReady(id);
+  };
+
+  return (
+    <div className="mx-auto max-w-5xl px-4 pb-16 pt-8 md:px-8">
+      <div className="flex items-end justify-between gap-3">
+        <div>
+          <h1 className="font-serif text-[32px] leading-tight text-forest md:text-[42px]">Buka <em>toko</em> Anda</h1>
+          <p className="mt-1 text-sm text-muted">Buat toko baru, atau kelola salah satu toko contoh untuk mencoba dashboard.</p>
+        </div>
+        {onCancel && <button type="button" className={btnGhost} onClick={onCancel}>Batal</button>}
+      </div>
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <div className="rounded-2xl border border-line bg-white/50 p-5">
+          <p className="font-serif text-lg text-forest">Toko baru</p>
+          <div className="mt-3 space-y-3">
+            <div>
+              <label className={labelCls} htmlFor="st-name">Nama toko</label>
+              <input id="st-name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} placeholder="Batik Ningrum" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className={labelCls} htmlFor="st-city">Kota</label>
+                <select id="st-city" className={inputCls} value={city} onChange={(e) => setCity(e.target.value)}>
+                  {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelCls} htmlFor="st-type">Jenis</label>
+                <select id="st-type" className={inputCls} value={type} onChange={(e) => setType(e.target.value as StoreProfile['sellerType'])}>
+                  {(Object.keys(SELLER_TYPE_LABEL) as StoreProfile['sellerType'][]).map((t) => <option key={t} value={t}>{SELLER_TYPE_LABEL[t]}</option>)}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="st-wa">Nomor WhatsApp</label>
+              <input id="st-wa" className={inputCls} value={wa} onChange={(e) => setWa(e.target.value)} placeholder="6281234567890" inputMode="tel" />
+              {wa && !waOk && <p className="mt-1 text-[11.5px] text-[#8A2F3B]">Awali dengan 62, contoh 6281234567890.</p>}
+            </div>
+            <button type="button" className={`${btnPrimary} w-full`} disabled={name.trim().length < 2 || !waOk} onClick={create}>
+              <Plus className="size-4" /> Buat Toko
+            </button>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-line bg-white/50 p-5">
+          <p className="font-serif text-lg text-forest">Toko contoh yang belum dikelola</p>
+          <ul className="mt-3 space-y-2">
+            {unclaimed.length === 0 && <li className="text-sm text-muted">Semua toko contoh sudah dikelola akun lain.</li>}
+            {unclaimed.map((s) => (
+              <li key={s.id} className="flex items-center gap-3 rounded-xl border border-line bg-cream px-3 py-2.5">
+                <span className="grid size-9 shrink-0 place-items-center rounded-full font-serif text-cream" style={{ background: s.avatarHex }}>{s.name.charAt(0)}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm text-forest">{s.name}</span>
+                  <span className="block text-[11px] text-muted">{SELLER_TYPE_LABEL[s.sellerType]} . {s.city}</span>
+                </span>
+                <button type="button" disabled={busy !== null} onClick={() => claim(s.id)} className="min-h-9 rounded-full border border-line-2 px-3 text-xs font-medium text-forest hover:border-forest/50 disabled:opacity-50">
+                  {busy === s.id ? 'Menghubungkan...' : 'Kelola'}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       </div>
     </div>

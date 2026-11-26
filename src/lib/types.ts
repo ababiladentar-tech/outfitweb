@@ -115,6 +115,8 @@ export interface StoreProfile {
   sellerType: SellerType;
   bannerHex: string;
   avatarHex: string;
+  /** Supabase user who manages this store. Empty for unclaimed demo stores. */
+  ownerId?: string | null;
 }
 
 export interface BodyMeasurements {
@@ -209,6 +211,9 @@ export interface ChatMessage {
   productIds?: string[];
   imageUrl?: string;
   wardrobeIds?: string[];
+  outfits?: AgentOutfit[];
+  steps?: AgentStep[];
+  actions?: AgentAction[];
   createdAt: string;
 }
 
@@ -243,3 +248,53 @@ export type ViewKey =
   | 'studio'
   | 'stylist'
   | 'seller';
+
+/* ---------- Stylist agent ---------- */
+
+/** One outfit assembled by the stylist agent with the shared outfit engine. */
+export interface AgentOutfit {
+  id: string;
+  title: string;
+  occasion: Occasion;
+  weather: Weather;
+  mode: BuilderMode;
+  budget?: number;
+  pieces: OutfitPiece[];
+  totalPrice: number;
+  /** Pieces whose fit score is under 70. */
+  fitWarnings: string[];
+}
+
+export type AgentToolName =
+  | 'search_products'
+  | 'check_fit'
+  | 'compare_products'
+  | 'view_wardrobe'
+  | 'build_outfit'
+  | 'save_outfit'
+  | 'open_in_studio'
+  | 'add_favorites'
+  | 'update_measurements';
+
+/** A visible step in the agent's work, shown as a trace in the chat. */
+export interface AgentStep {
+  tool: AgentToolName;
+  label: string;
+  detail: string;
+}
+
+/** Changes the agent asks the app to make. The browser applies them. */
+export type AgentAction =
+  | { type: 'save_outfit'; outfitId: string; title: string }
+  | { type: 'open_in_studio'; outfitId: string }
+  | { type: 'add_favorites'; productIds: string[] }
+  | { type: 'update_measurements'; measurements: Partial<BodyMeasurements> };
+
+export interface AgentReply {
+  text: string;
+  productIds: string[];
+  outfits: AgentOutfit[];
+  steps: AgentStep[];
+  actions: AgentAction[];
+  source: 'gemini' | 'local';
+}

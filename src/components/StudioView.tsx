@@ -6,29 +6,11 @@ import { useApp } from './AppContext';
 import { ProductImage } from './GarmentArt';
 import { Chip, Modal, btnGhost, btnPrimary, inputCls, labelCls } from './ui';
 import { STYLE_LABEL } from '@/lib/data';
-import { undertoneHarmony, vibeScore } from '@/lib/color';
 import { useCatalog, useHandoff, useProfile, useSavedOutfits, useWardrobe } from '@/lib/hooks';
-import { bestSize, FIT_LABEL, fitTone } from '@/lib/sizing';
+import { FIT_LABEL, fitTone } from '@/lib/sizing';
+import { SLOTS, buildCandidates, generateOutfit, type Candidate } from '@/lib/outfit';
 import { emitToast, formatIDR, uid, useHydrated } from '@/lib/storage';
-import type {
-  BuilderMode,
-  Occasion,
-  OutfitPiece,
-  OutfitSlot,
-  StylePreference,
-  UMKMProductPost,
-  UserProfile,
-  WardrobeItem,
-  Weather,
-} from '@/lib/types';
-
-const SLOTS: { key: OutfitSlot; label: string }[] = [
-  { key: 'top', label: 'Atasan / Dress' },
-  { key: 'bottom', label: 'Bawahan' },
-  { key: 'outer', label: 'Outer' },
-  { key: 'shoes', label: 'Sepatu' },
-  { key: 'bag', label: 'Tas' },
-];
+import type { BuilderMode, Occasion, OutfitPiece, OutfitSlot, StylePreference, Weather } from '@/lib/types';
 
 const OCCASIONS: { key: Occasion; label: string }[] = [
   { key: 'kuliah', label: 'Kuliah' },
@@ -49,71 +31,6 @@ const WEATHER: { key: Weather; label: string; icon: React.ReactNode }[] = [
   { key: 'sejuk', label: 'Sejuk', icon: <Wind className="size-3.5" strokeWidth={1.6} /> },
   { key: 'hujan', label: 'Hujan', icon: <CloudRain className="size-3.5" strokeWidth={1.6} /> },
 ];
-
-const wardrobeSlot = (c: WardrobeItem['category']): OutfitSlot | null =>
-  c === 'tops' || c === 'dresses' ? 'top' : c === 'bottoms' ? 'bottom' : c === 'outerwear' ? 'outer' : c === 'shoes' ? 'shoes' : c === 'bags' ? 'bag' : null;
-
-const productSlot = (c: UMKMProductPost['category']): OutfitSlot | null =>
-  c === 'top' || c === 'dress' ? 'top' : c === 'pants' || c === 'jeans' ? 'bottom' : c === 'outerwear' ? 'outer' : c === 'shoes' ? 'shoes' : c === 'bag' ? 'bag' : null;
-
-const OCC_TAG: Record<Occasion, string[]> = {
-  kuliah: ['kuliah'],
-  kantor: ['kantor'],
-  kasual: ['kasual', 'weekend'],
-  kondangan: ['kondangan'],
-  weekend: ['weekend', 'kasual'],
-};
-
-interface Candidate {
-  piece: OutfitPiece;
-  score: number;
-  isDress: boolean;
-}
-
-function fromWardrobe(w: WardrobeItem, profile: UserProfile, occ: Occasion, vibe: StylePreference | 'all'): Candidate | null {
-  const slot = wardrobeSlot(w.category);
-  if (!slot) return null;
-  let score = undertoneHarmony(w.colorHex, profile.skinTone);
-  if (vibe !== 'all' && w.style === vibe) score += 15;
-  if (occ === 'kantor' && (w.style === 'formal' || w.style === 'minimalist')) score += 10;
-  if (occ === 'kondangan' && (w.style === 'formal' || w.category === 'dresses')) score += 12;
-  return {
-    piece: { slot, source: 'wardrobe', refId: w.id, name: w.name, imageUrl: w.imageUrl, colorHex: w.colorHex, price: 0 },
-    score,
-    isDress: w.category === 'dresses',
-  };
-}
-
-function fromProduct(p: UMKMProductPost, profile: UserProfile, occ: Occasion, vibe: StylePreference | 'all'): Candidate | null {
-  const slot = productSlot(p.category);
-  if (!slot || !p.isAvailable || p.stockCount <= 0) return null;
-  if (profile.gender === 'boy' && p.category === 'dress') return null;
-  const fit = bestSize(p, profile.measurements);
-  let score = vibeScore(p, profile.skinTone, profile.bodyShape) * 0.5 + fit.fit.score * 0.5;
-  if (OCC_TAG[occ].some((t) => p.tags.includes(t))) score += 20;
-  if (vibe !== 'all' && p.style === vibe) score += 15;
-  return {
-    piece: {
-      slot,
-      source: 'umkm',
-      refId: p.id,
-      name: p.title,
-      imageUrl: p.imageUrl,
-      colorHex: p.colorHex[0] ?? '#888888',
-      price: p.price,
-      sellerName: p.sellerName,
-      fit: slot === 'bag' ? undefined : { ...fit.fit, notes: [`Ukuran ${fit.size.sizeLabel}`, ...fit.fit.notes] },
-    },
-    score,
-    isDress: p.category === 'dress',
-  };
-}
-
-function seeded(seed: number): () => number {
-  let s = seed % 2147483647;
-  if (s <= 0) s += 2147483646;
-  return () => (s = (s * 16807) % 2147483647) / 2147483647;
-}
 
 export function StudioView() {
   const [profile] = useProfile();
@@ -138,7 +55,19 @@ export function StudioView() {
 
   // Consume wardrobe handoff.
   useEffect(() => {
-    if (handoff && handoff.target === 'studio' && handoff.wardrobeIds.length) {
+    if (!handoff || handoff.target !== 'studio') return;
+    if (handoff.outfit) {
+      // Outfit built by the stylist agent: show it exactly as built.
+      const o = handoff.outfit;
+      setMode(o.mode);
+      setOccasion(o.occasion);
+      setWeather(o.weather);
+      if (o.budget) setBudget(o.budget);
+      setLocked([]);
+      setOverrides(Object.fromEntries(SLOTS.map((s) => [s.key, o.pieces.find((p) => p.slot === s.key) ?? null])));
+      setTitle(o.title);
+      setHandoff(null);
+    } else if (handoff.wardrobeIds.length) {
       setLocked(handoff.wardrobeIds);
       setMode('hybrid');
       setOverrides({});
@@ -146,69 +75,15 @@ export function StudioView() {
     }
   }, [handoff, setHandoff]);
 
-  const candidates = useMemo(() => {
-    const map: Record<OutfitSlot, Candidate[]> = { top: [], bottom: [], outer: [], shoes: [], bag: [] };
-    if (mode !== 'umkm') {
-      wardrobe.forEach((w) => {
-        const c = fromWardrobe(w, profile, occasion, vibe);
-        if (c) map[c.piece.slot].push(c);
-      });
-    }
-    if (mode !== 'wardrobe') {
-      catalog.forEach((p) => {
-        const c = fromProduct(p, profile, occasion, vibe);
-        if (c) map[c.piece.slot].push(c);
-      });
-    }
-    return map;
-  }, [mode, wardrobe, catalog, profile, occasion, vibe]);
+  const candidates = useMemo(
+    () => buildCandidates({ mode, wardrobe, catalog, profile, occasion, vibe }),
+    [mode, wardrobe, catalog, profile, occasion, vibe],
+  );
 
-  const generated = useMemo(() => {
-    const rand = seeded(seed);
-    const pieces: Partial<Record<OutfitSlot, OutfitPiece | null>> = {};
-    let remaining = budget;
-    let umkmUsed = 0;
-    const needOuter = weather !== 'cerah' || occasion === 'kantor' || occasion === 'kondangan';
-    let dress = false;
-
-    const lockedPieces = wardrobe.filter((w) => locked.includes(w.id)).map((w) => fromWardrobe(w, profile, occasion, vibe)).filter((c): c is Candidate => !!c);
-
-    for (const { key } of SLOTS) {
-      if (key === 'bottom' && dress) {
-        pieces.bottom = null;
-        continue;
-      }
-      if (key === 'outer' && !needOuter) {
-        pieces.outer = null;
-        continue;
-      }
-      const lock = lockedPieces.find((c) => c.piece.slot === key);
-      if (lock) {
-        pieces[key] = lock.piece;
-        if (lock.isDress) dress = true;
-        continue;
-      }
-      let pool = candidates[key].map((c) => ({ ...c, score: c.score + rand() * 18 }));
-      if (mode === 'hybrid') {
-        const ownHas = pool.some((c) => c.piece.source === 'wardrobe');
-        const preferUmkm = (key === 'outer' || key === 'shoes' || !ownHas) && umkmUsed < 2;
-        pool = pool.filter((c) => (c.piece.source === 'umkm' ? preferUmkm : !preferUmkm || !ownHas));
-        if (!pool.length) pool = candidates[key].filter((c) => c.piece.source === 'wardrobe');
-      }
-      pool = pool.filter((c) => c.piece.source === 'wardrobe' || c.piece.price <= remaining);
-      pool.sort((a, b) => b.score - a.score);
-      const pick = pool[0];
-      if (pick) {
-        pieces[key] = pick.piece;
-        if (pick.piece.source === 'umkm') {
-          remaining -= pick.piece.price;
-          umkmUsed += 1;
-        }
-        if (pick.isDress) dress = true;
-      } else pieces[key] = null;
-    }
-    return pieces;
-  }, [candidates, seed, budget, weather, occasion, mode, locked, wardrobe, profile, vibe]);
+  const generated = useMemo(
+    () => generateOutfit({ candidates, mode, occasion, vibe, budget, weather, seed, profile, wardrobe, lockedWardrobeIds: locked }),
+    [candidates, seed, budget, weather, occasion, mode, locked, wardrobe, profile, vibe],
+  );
 
   const outfit: Partial<Record<OutfitSlot, OutfitPiece | null>> = { ...generated, ...overrides };
   const pieces = SLOTS.map((s) => outfit[s.key]).filter((p): p is OutfitPiece => !!p);

@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Bell, BookmarkCheck, Compass, HelpCircle, Home, Layers, LogOut, Ruler, Shirt, Store, Trash2, User, UserCog } from 'lucide-react';
 import { AppContext, useApp as useAppCtx, type AppActions } from './AppContext';
 import { AuthModal } from './AuthModal';
+import { cloudEnabled } from '@/lib/cloud/client';
+import { startCloudSync } from '@/lib/cloud/sync';
 import { CatalogView } from './CatalogView';
 import { ProductImage } from './GarmentArt';
 import { HeroView } from './HeroView';
@@ -17,7 +19,7 @@ import { StudioView } from './StudioView';
 import { StylistView } from './StylistView';
 import { WardrobeView } from './WardrobeView';
 import { Modal, Toaster } from './ui';
-import { useBookmarks, useCatalog, useNotifications, useProfile, useSavedOutfits, useSession } from '@/lib/hooks';
+import { migrateDemoCatalog, useBookmarks, useCatalog, useNotifications, useProfile, useSavedOutfits, useSession } from '@/lib/hooks';
 import { emitToast, formatIDR, useHydrated, useOverlayOpen } from '@/lib/storage';
 import type { ViewKey } from '@/lib/types';
 
@@ -46,6 +48,27 @@ export function AppShell() {
   const [commentsFor, setCommentsFor] = useState<string | null>(null);
   const [reportFor, setReportFor] = useState<string | null>(null);
   const [catalog] = useCatalog();
+  const [session] = useSession();
+  const [profile] = useProfile();
+
+  // Hosted mode: keep the local cache in sync with Supabase.
+  useEffect(() => {
+    migrateDemoCatalog();
+    return startCloudSync();
+  }, []);
+
+  // Someone who signed up with Google skips the signup form, so offer the
+  // style profile once after their first sign-in.
+  useEffect(() => {
+    if (!cloudEnabled() || !session?.id || profile.onboarded) return;
+    const flag = `outfitly:onboard-asked:${session.id}`;
+    if (window.sessionStorage.getItem(flag)) return;
+    const t = window.setTimeout(() => {
+      window.sessionStorage.setItem(flag, '1');
+      setOnboarding(true);
+    }, 2500);
+    return () => window.clearTimeout(t);
+  }, [session?.id, profile.onboarded]);
 
   const go = useCallback((v: ViewKey) => {
     setView(v);
@@ -397,7 +420,7 @@ function Footer({ go }: { go: (v: ViewKey) => void }) {
       </div>
       <div className="flex flex-col items-center gap-2 border-t border-line px-5 py-4 text-center text-[12px] text-muted sm:flex-row sm:justify-center">
         <span>2026 Outfitly. Dibuat untuk UMKM busana Indonesia.</span>
-        <span>Versi demo: data toko dan produk adalah contoh, data Anda hanya tersimpan di browser ini.</span>
+        <span>{cloudEnabled() ? 'Toko dan produk awal adalah data contoh. Data akun Anda tersimpan di server Outfitly.' : 'Versi demo: data toko dan produk adalah contoh, data Anda hanya tersimpan di browser ini.'}</span>
       </div>
     </footer>
   );

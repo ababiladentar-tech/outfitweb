@@ -1,5 +1,6 @@
 'use client';
 
+import { authHeaders } from '@/lib/cloud/client';
 import { useRef, useState } from 'react';
 import { Check, Compass, ImagePlus, Layers, Loader2, Plus, Shirt, Trash2, X } from 'lucide-react';
 import { useApp } from './AppContext';
@@ -180,7 +181,7 @@ function AddBody({ onClose, onSave }: { onClose: () => void; onSave: (w: Wardrob
       try {
         const res = await fetch('/api/analyze-clothing', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...(await authHeaders()) },
           body: JSON.stringify({ image: data }),
         });
         const r = (await res.json()) as {

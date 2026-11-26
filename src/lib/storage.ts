@@ -58,8 +58,24 @@ export function readStore<T>(key: StoreKey, fallback: T): T {
   return value;
 }
 
-export function writeStore<T>(key: StoreKey, value: T): boolean {
+export type WriteListener = (key: StoreKey, prev: unknown, next: unknown) => void;
+const writeListeners = new Set<WriteListener>();
+
+/** Observe every local write (the cloud sync pushes changes from here). */
+export function onStoreWrite(l: WriteListener): () => void {
+  writeListeners.add(l);
+  return () => {
+    writeListeners.delete(l);
+  };
+}
+
+/**
+ * Persist a value and notify components. `silent` skips write listeners; the
+ * cloud sync uses it when loading server data so it does not echo it back.
+ */
+export function writeStore<T>(key: StoreKey, value: T, opts?: { silent?: boolean }): boolean {
   if (typeof window === 'undefined') return false;
+  const prev = writeListeners.size && !opts?.silent ? readStore<unknown>(key, undefined) : undefined;
   const raw = JSON.stringify(value);
   try {
     window.localStorage.setItem(PREFIX + key, raw);
@@ -69,6 +85,7 @@ export function writeStore<T>(key: StoreKey, value: T): boolean {
   }
   cache.set(key, { raw, value });
   window.dispatchEvent(new Event(eventName(key)));
+  if (!opts?.silent) writeListeners.forEach((l) => l(key, prev, value));
   return true;
 }
 

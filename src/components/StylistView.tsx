@@ -3,15 +3,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowUp, Compass, Download, History, ImagePlus, Loader2, Plus, RotateCcw, Shirt, Trash2, X } from 'lucide-react';
 import { useApp } from './AppContext';
+import { ActionChips, AgentTrace, OutfitCard } from './AgentBits';
 import { ProductImage } from './GarmentArt';
 import { Modal } from './ui';
 import { compressImage, extractGarmentInfo } from '@/lib/color';
-import { useCatalog, useChatQuota, useChatSessions, useHandoff, useProfile, useWardrobe } from '@/lib/hooks';
-import { QUICK_SUGGESTIONS, composeReply } from '@/lib/stylist';
+import { useAddFavorites, useCatalog, useChatQuota, useChatSessions, useHandoff, useProfile, useSavedOutfits, useWardrobe } from '@/lib/hooks';
+import { QUICK_SUGGESTIONS } from '@/lib/stylist';
+import { runLocalAgent } from '@/lib/agent/local';
+import { createContext } from '@/lib/agent/tools';
+import { authHeaders } from '@/lib/cloud/client';
 import { emitToast, formatIDR, todayKey, uid, useHydrated } from '@/lib/storage';
-import type { ChatMessage, ChatMode, ChatSession } from '@/lib/types';
+import type { AgentOutfit, AgentReply, ChatMessage, ChatMode, ChatSession } from '@/lib/types';
 
-const DAILY_LIMIT = 10;
+/**
+ * Daily consultation limit. Only a hosted deployment (with Supabase) needs one,
+ * to protect the Gemini key; the server enforces it there. Local runs are unlimited.
+ */
+const DAILY_LIMIT = process.env.NEXT_PUBLIC_SUPABASE_URL ? Number(process.env.NEXT_PUBLIC_AI_DAILY_LIMIT || 10) : Infinity;
+const LIMITED = Number.isFinite(DAILY_LIMIT);
 
 function Typewriter({ text, onDone, onTick }: { text: string; onDone: () => void; onTick: () => void }) {
   const [n, setN] = useState(0);
@@ -38,13 +47,15 @@ function Typewriter({ text, onDone, onTick }: { text: string; onDone: () => void
 }
 
 export function StylistView() {
-  const [profile] = useProfile();
+  const [profile, setProfile] = useProfile();
+  const [, setSaved] = useSavedOutfits();
+  const addFavorites = useAddFavorites();
   const [catalog] = useCatalog();
   const [wardrobe] = useWardrobe();
   const [sessions, setSessions] = useChatSessions();
   const [quota, setQuota] = useChatQuota();
   const [handoff, setHandoff] = useHandoff();
-  const { openProduct } = useApp();
+  const { openProduct, go } = useApp();
   const hydrated = useHydrated();
 
   const [currentId, setCurrentId] = useState<string | null>(null);
@@ -57,6 +68,7 @@ export function StylistView() {
   const [thinking, setThinking] = useState(false);
   const [typingId, setTypingId] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -110,32 +122,90 @@ export function StylistView() {
     setThinking(true);
     const history = (current?.messages ?? []).slice(-6).map((m) => ({ role: m.role, text: m.text }));
     const lightCatalog = catalog.map((p) => (p.imageUrl.startsWith('data:') ? { ...p, imageUrl: '' } : p));
-    const lightWardrobe = attachedItems.map((w) => ({ ...w, imageUrl: '' }));
+    const lightWardrobe = wardrobe.map((w) => ({ ...w, imageUrl: w.imageUrl.startsWith('data:') ? '' : w.imageUrl }));
+    const attachedIds = attachedItems.map((w) => w.id);
     const startedAt = Date.now();
-    const finish = (reply: { text: string; productIds: string[] }): void => {
-      const msg: ChatMessage = { id: uid('m'), role: 'stylist', text: reply.text, productIds: reply.productIds, createdAt: new Date().toISOString() };
+    const finish = (reply: AgentReply): void => {
+      const msg: ChatMessage = {
+        id: uid('m'),
+        role: 'stylist',
+        text: reply.text,
+        productIds: reply.productIds,
+        outfits: reply.outfits.length ? reply.outfits : undefined,
+        steps: reply.steps.length ? reply.steps : undefined,
+        actions: reply.actions.length ? reply.actions : undefined,
+        createdAt: new Date().toISOString(),
+      };
       const wait = Math.max(0, 600 - (Date.now() - startedAt));
       window.setTimeout(() => {
         setSessions((prev) => prev.map((s) => (s.id === target ? { ...s, messages: [...s.messages, msg], updatedAt: msg.createdAt } : s)));
         setThinking(false);
         setTypingId(msg.id);
+        applyActions(reply);
       }, wait);
     };
-    fetch('/api/stylist', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, mode, profile, catalog: lightCatalog, wardrobe: lightWardrobe, attachedImageHex: imgHex, history }),
-    })
+    authHeaders()
+      .then((auth) =>
+        fetch('/api/stylist', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...auth },
+          body: JSON.stringify({ text, mode, profile, catalog: lightCatalog, wardrobe: lightWardrobe, attachedWardrobeIds: attachedIds, attachedImageHex: imgHex, history }),
+        }),
+      )
       .then(async (res) => {
         if (!res.ok) throw new Error(String(res.status));
-        const data = (await res.json()) as { text: string; productIds: string[] };
+        const data = (await res.json()) as AgentReply & { notice?: string };
+        setOffline(false);
+        setNotice(data.notice ?? null);
         finish(data);
       })
       .catch(() => {
-        // Offline or server error: the same engine runs in the browser.
+        // Offline or server error: the same agent tools run in the browser.
         setOffline(true);
-        finish(composeReply({ text, mode, profile, catalog, wardrobe: attachedItems, attachedImageHex: imgHex }));
+        finish(runLocalAgent({ text, mode, ctx: createContext(profile, catalog, wardrobe), attachedImageHex: imgHex, attachedWardrobeIds: attachedIds }));
       });
+  };
+
+  /** Apply the changes the agent made, then remember them on the message. */
+  const applyActions = (reply: AgentReply): void => {
+    let navigate: AgentOutfit | null = null;
+    // Saved outfits are prepended, so save in reverse to keep the agent's order.
+    for (const a of [...reply.actions].reverse()) {
+      if (a.type === 'save_outfit') {
+        const o = reply.outfits.find((x) => x.id === a.outfitId);
+        if (o) saveOutfit(o, a.title);
+      } else if (a.type === 'add_favorites') {
+        addFavorites(a.productIds);
+      } else if (a.type === 'update_measurements') {
+        setProfile((p) => ({ ...p, measurements: { ...p.measurements, ...a.measurements } }));
+      } else if (a.type === 'open_in_studio') {
+        navigate = reply.outfits.find((x) => x.id === a.outfitId) ?? null;
+      }
+    }
+    if (navigate) {
+      const o = navigate;
+      window.setTimeout(() => openInStudio(o), 1400);
+    }
+  };
+
+  const saveOutfit = (o: AgentOutfit, title = o.title): void => {
+    setSaved((prev) => [{ id: uid('o'), title, mode: o.mode, occasion: o.occasion, pieces: o.pieces, totalPrice: o.totalPrice, createdAt: new Date().toISOString() }, ...prev]);
+  };
+
+  const openInStudio = (o: AgentOutfit): void => {
+    setHandoff({ target: 'studio', wardrobeIds: [], outfit: o, at: Date.now() });
+    go('studio');
+  };
+
+  const manualSave = (messageId: string, o: AgentOutfit): void => {
+    saveOutfit(o);
+    setSessions((prev) =>
+      prev.map((s) => ({
+        ...s,
+        messages: s.messages.map((m) => (m.id === messageId ? { ...m, actions: [...(m.actions ?? []), { type: 'save_outfit' as const, outfitId: o.id, title: o.title }] } : m)),
+      })),
+    );
+    emitToast('Outfit disimpan ke Outfit Tersimpan');
   };
 
   const exportTxt = (): void => {
@@ -175,14 +245,14 @@ export function StylistView() {
           <span className="grid size-9 place-items-center rounded-full bg-forest text-cream"><Compass className="size-4.5" strokeWidth={1.4} /></span>
           <div>
             <p className="font-serif text-lg leading-tight text-forest">Konsultasi Stylist</p>
-            <p className="text-[11px] text-muted">{hydrated ? `${left} dari ${DAILY_LIMIT} konsultasi tersisa hari ini` : ' '}</p>
+            <p className="text-[11px] text-muted">{hydrated ? (LIMITED ? `${left} dari ${DAILY_LIMIT} konsultasi tersisa hari ini` : 'Stylist Agent siap membantu') : ' '}</p>
           </div>
         </div>
         <div className="flex items-center gap-1">
           <IconBtn label="Riwayat" onClick={() => setHistoryOpen(true)}><History className="size-4" strokeWidth={1.5} /></IconBtn>
           <IconBtn label="Percakapan baru" onClick={() => { setCurrentId(null); setTypingId(null); }}><Plus className="size-4" strokeWidth={1.5} /></IconBtn>
           <IconBtn label="Ekspor Lookbook" onClick={exportTxt} disabled={!current}><Download className="size-4" strokeWidth={1.5} /></IconBtn>
-          <IconBtn label="Reset kuota demo" onClick={() => { setQuota({ date: todayKey(), used: 0 }); emitToast('Kuota demo direset', 'info'); }}><RotateCcw className="size-4" strokeWidth={1.5} /></IconBtn>
+          {LIMITED && <IconBtn label="Reset kuota demo" onClick={() => { setQuota({ date: todayKey(), used: 0 }); emitToast('Kuota demo direset', 'info'); }}><RotateCcw className="size-4" strokeWidth={1.5} /></IconBtn>}
         </div>
       </div>
 
@@ -201,7 +271,7 @@ export function StylistView() {
           <div className="mx-auto max-w-lg py-8 text-center">
             <h2 className="font-serif text-[30px] leading-tight text-forest">Mau tampil <em>seperti apa</em> hari ini?</h2>
             <p className="mt-2 text-sm text-muted">
-              Stylist kami membaca undertone {profile.skinTone}, bentuk tubuh {profile.bodyShape.replace('_', ' ')}, dan ukuran cm Anda, lalu menyarankan produk UMKM yang benar-benar pas.
+              Stylist Agent membaca undertone {profile.skinTone}, bentuk tubuh {profile.bodyShape.replace('_', ' ')}, ukuran cm, dan isi lemari Anda. Ia mencari di katalog, menghitung kelonggaran kain, menyusun outfit per acara, lalu bisa langsung menyimpannya atau membukanya di Studio.
             </p>
           </div>
         )}
@@ -223,11 +293,27 @@ export function StylistView() {
                 )}
                 {m.role === 'stylist' ? (
                   <div className="rounded-[18px] rounded-bl-md border border-line bg-white/70 px-4 py-3">
-                    <p className="mb-1 text-[12px] font-semibold text-sage-ink">Stylist Outfitly</p>
+                    <p className="mb-1 text-[12px] font-semibold text-sage-ink">Stylist Agent Outfitly</p>
+                    {m.steps && <AgentTrace steps={m.steps} />}
                     <div className="whitespace-pre-line text-[14px] leading-relaxed text-ink/90">
                       {typingId === m.id ? <Typewriter text={m.text} onTick={scrollDown} onDone={() => setTypingId(null)} /> : m.text}
                     </div>
-                    {typingId !== m.id && m.productIds && m.productIds.length > 0 && (
+                    {typingId !== m.id && m.outfits && m.outfits.length > 0 && (
+                      <div className={`mt-3 grid animate-fade-up gap-2 ${m.outfits.length > 1 ? 'sm:grid-cols-2' : ''}`}>
+                        {m.outfits.map((o) => (
+                          <OutfitCard
+                            key={o.id}
+                            outfit={o}
+                            saved={(m.actions ?? []).some((a) => a.type === 'save_outfit' && a.outfitId === o.id)}
+                            onSave={() => manualSave(m.id, o)}
+                            onOpenStudio={() => openInStudio(o)}
+                            onOpenProduct={openProduct}
+                          />
+                        ))}
+                      </div>
+                    )}
+                    {typingId !== m.id && m.actions && <ActionChips actions={m.actions} outfits={m.outfits ?? []} />}
+                    {typingId !== m.id && !m.outfits?.length && m.productIds && m.productIds.length > 0 && (
                       <div className="mt-3 grid animate-fade-up grid-cols-1 gap-2 sm:grid-cols-3">
                         {m.productIds.map((id) => {
                           const p = catalog.find((x) => x.id === id);
@@ -255,13 +341,19 @@ export function StylistView() {
           ))}
           {offline && !thinking && (
             <p role="status" className="rounded-xl border border-line bg-cream-2 px-3 py-2 text-[12.5px] text-muted">
-              Server stylist tidak terhubung, jawaban terakhir disusun langsung di browser dari katalog yang sama.
+              Server stylist tidak terhubung. Agen menjalankan tools yang sama langsung di browser.
               <button type="button" onClick={() => setOffline(false)} className="ml-2 font-medium text-forest underline underline-offset-2">Tutup</button>
+            </p>
+          )}
+          {notice && !thinking && (
+            <p role="status" className="rounded-xl border border-line bg-cream-2 px-3 py-2 text-[12.5px] text-muted">
+              {notice}
+              <button type="button" onClick={() => setNotice(null)} className="ml-2 font-medium text-forest underline underline-offset-2">Tutup</button>
             </p>
           )}
           {thinking && (
             <div className="flex items-center gap-2 text-sm text-muted">
-              <Loader2 className="size-4 animate-spin text-forest" /> Stylist sedang menyusun kombinasi...
+              <Loader2 className="size-4 animate-spin text-forest" /> Stylist sedang mencari produk, menghitung ukuran, dan menyusun outfit...
             </div>
           )}
         </div>
