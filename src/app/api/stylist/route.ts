@@ -5,6 +5,7 @@ import { createContext } from '@/lib/agent/tools';
 import { nearestColorName } from '@/lib/color';
 import { geminiConfigured, geminiToolTurn, lastGeminiError } from '@/lib/server/gemini';
 import { cloudConfigured, consumeAiQuota, userFromRequest } from '@/lib/server/supabase';
+import { takeDemoQuota } from '@/lib/server/demo-limit';
 import type { AgentReply, ChatMode, UMKMProductPost, UserProfile, WardrobeItem } from '@/lib/types';
 
 /** The agent may take several model turns; allow up to a minute on Vercel. */
@@ -55,6 +56,9 @@ export async function POST(req: Request) {
     if (left < 0) {
       return NextResponse.json({ ...local(), notice: 'Kuota Stylist Agent hari ini habis. Jawaban ini disusun mesin lokal.', quotaLeft: 0 });
     }
+  } else if (process.env.VERCEL && !takeDemoQuota(req)) {
+    // Public demo without accounts (local `npm run dev` is never limited).
+    return NextResponse.json({ ...local(), notice: 'Batas Stylist Agent berbasis Gemini untuk demo ini sudah tercapai. Coba lagi dalam satu jam; jawaban ini disusun mesin lokal.' });
   }
 
   const attachments = [

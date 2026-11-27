@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { geminiConfigured, geminiGenerate } from '@/lib/server/gemini';
 import { cloudConfigured, userFromRequest } from '@/lib/server/supabase';
+import { takeDemoQuota } from '@/lib/server/demo-limit';
 import type { WardrobeCategory } from '@/lib/types';
 
 const CATEGORIES: WardrobeCategory[] = ['tops', 'bottoms', 'outerwear', 'dresses', 'shoes', 'bags', 'accessories'];
@@ -14,6 +15,9 @@ export async function POST(req: Request) {
   // Hosted with a database: only signed-in users may spend the model key.
   if (cloudConfigured() && !(await userFromRequest(req))) {
     return NextResponse.json({ available: false, reason: 'Masuk untuk memakai pengenal foto. Warna dibaca dari piksel foto.' });
+  }
+  if (!cloudConfigured() && process.env.VERCEL && !takeDemoQuota(req)) {
+    return NextResponse.json({ available: false, reason: 'Batas demo pengenal foto tercapai. Warna dibaca dari piksel foto.' });
   }
   let image = '';
   try {
