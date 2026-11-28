@@ -1,11 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { ArrowLeft, Eye, EyeOff, Loader2, ShoppingBag, Store } from 'lucide-react';
 import { Modal, btnPrimary, inputCls, labelCls } from './ui';
 import { useProfile, useSession, type AuthSession } from '@/lib/hooks';
 import { emitToast } from '@/lib/storage';
 import { cloudEnabled, supabase } from '@/lib/cloud/client';
+import { setPendingRole } from '@/lib/cloud/sync';
+import type { AccountRole } from '@/lib/types';
 
 const AUTH_ERRORS: [RegExp, string][] = [
   [/invalid login credentials/i, 'Email atau kata sandi salah.'],
@@ -57,25 +59,68 @@ function FbMark() {
   );
 }
 
+const ROLES: { key: AccountRole; title: string; text: string; icon: React.ReactNode }[] = [
+  {
+    key: 'pengguna',
+    title: 'Pengguna',
+    text: 'Belanja busana lokal, simpan lemari digital, padu padan di Studio, dan konsultasi dengan Stylist Agent.',
+    icon: <ShoppingBag className="size-5" strokeWidth={1.5} aria-hidden />,
+  },
+  {
+    key: 'mitra',
+    title: 'Mitra Penjual',
+    text: 'Buka toko UMKM atau thrift, unggah produk dengan ukuran cm, dan pantau statistik toko. Fitur pengguna tetap bisa dipakai.',
+    icon: <Store className="size-5" strokeWidth={1.5} aria-hidden />,
+  },
+];
+
 export function AuthModal({
   open,
   initialTab,
+  initialRole,
   onClose,
   onAuthed,
 }: {
   open: boolean;
   initialTab: 'login' | 'signup';
+  /** Skip the role step when the entry point already implies one (e.g. "Jadi Mitra"). */
+  initialRole?: AccountRole;
   onClose: () => void;
-  onAuthed: (isNew: boolean) => void;
+  onAuthed: (isNew: boolean, role: AccountRole) => void;
 }) {
   return (
     <Modal open={open} onClose={onClose} size="sm" hideClose={false} title={<span className="font-serif">Selamat datang di <em>Outfitly</em></span>}>
-      {open && <AuthBody key={initialTab} initialTab={initialTab} onAuthed={onAuthed} />}
+      {open && <AuthBody key={`${initialTab}-${initialRole ?? ''}`} initialTab={initialTab} initialRole={initialRole} onAuthed={onAuthed} />}
     </Modal>
   );
 }
 
-function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; onAuthed: (isNew: boolean) => void }) {
+function RoleStep({ onPick }: { onPick: (r: AccountRole) => void }) {
+  return (
+    <div className="p-5 md:p-6">
+      <p className="text-sm text-muted">Masuk atau daftar sebagai:</p>
+      <div className="mt-3 grid gap-3">
+        {ROLES.map((r) => (
+          <button
+            key={r.key}
+            type="button"
+            onClick={() => onPick(r.key)}
+            className="flex items-start gap-3 rounded-2xl border border-line-2 bg-white p-4 text-left transition hover:border-forest/60 hover:bg-cream-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-forest"
+          >
+            <span className="grid size-10 shrink-0 place-items-center rounded-full bg-forest text-cream">{r.icon}</span>
+            <span>
+              <span className="block font-serif text-[17px] text-forest">{r.title}</span>
+              <span className="mt-0.5 block text-[12.5px] leading-snug text-muted">{r.text}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AuthBody({ initialTab, initialRole, onAuthed }: { initialTab: 'login' | 'signup'; initialRole?: AccountRole; onAuthed: (isNew: boolean, role: AccountRole) => void }) {
+  const [role, setRole] = useState<AccountRole | null>(initialRole ?? null);
   const [tab, setTab] = useState(initialTab);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -93,11 +138,14 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
   const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const canSubmit = tab === 'signup' ? allOk && emailOk && name.trim().length > 1 : emailOk && password.length > 0;
 
+  const chosen: AccountRole = role ?? 'pengguna';
+
   const finish = (s: AuthSession, isNew: boolean): void => {
     setSession(s);
-    setProfile((p) => ({ ...p, name: s.name, email: s.email }));
+    // Demo mode keeps the role locally; picking Mitra on login upgrades the account.
+    setProfile((p) => ({ ...p, name: s.name, email: s.email, role: chosen === 'mitra' ? 'mitra' : isNew ? 'pengguna' : p.role }));
     emitToast(isNew ? `Akun dibuat. Halo, ${s.name.split(' ')[0]}` : `Selamat datang kembali, ${s.name.split(' ')[0]}`);
-    onAuthed(isNew);
+    onAuthed(isNew, chosen);
   };
 
   const social = (provider: AuthSession['provider'], label: string): void => {
@@ -105,6 +153,7 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
     const sb = supabase();
     if (sb) {
       setError(null);
+      setPendingRole(chosen);
       sb.auth
         .signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })
         .then(({ error: e }) => {
@@ -128,9 +177,10 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
     const sb = supabase();
     if (sb) {
       setError(null);
+      setPendingRole(chosen);
       const req =
         tab === 'signup'
-          ? sb.auth.signUp({ email, password, options: { data: { name: name.trim() }, emailRedirectTo: window.location.origin } })
+          ? sb.auth.signUp({ email, password, options: { data: { name: name.trim(), role: chosen }, emailRedirectTo: window.location.origin } })
           : sb.auth.signInWithPassword({ email, password });
       req.then(({ data, error: e }) => {
         setBusy(null);
@@ -144,10 +194,10 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
           return;
         }
         // The cloud sync fills the session and loads the account's data.
-        setProfile((p) => (tab === 'signup' ? { ...p, name: name.trim(), email } : p));
+        setProfile((p) => (tab === 'signup' ? { ...p, name: name.trim(), email, role: chosen } : p));
         const nm = tab === 'signup' ? name.trim() : (data.user?.user_metadata?.name as string | undefined) ?? email.split('@')[0];
         emitToast(tab === 'signup' ? `Akun dibuat. Halo, ${nm.split(' ')[0]}` : `Selamat datang kembali, ${nm.split(' ')[0]}`);
-        onAuthed(tab === 'signup');
+        onAuthed(tab === 'signup', chosen);
       });
       return;
     }
@@ -168,8 +218,20 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
     );
   }
 
+  if (!role) return <RoleStep onPick={setRole} />;
+
+  const picked = ROLES.find((r) => r.key === role) ?? ROLES[0];
   return (
     <div className="p-5 md:p-6">
+      <div className="mb-4 flex items-center gap-2 rounded-xl bg-cream-2 px-3 py-2">
+        <span className="grid size-7 place-items-center rounded-full bg-forest text-cream [&>svg]:size-4">{picked.icon}</span>
+        <span className="flex-1 text-[13px] text-forest">
+          Sebagai <span className="font-semibold">{picked.title}</span>
+        </span>
+        <button type="button" onClick={() => setRole(null)} className="inline-flex min-h-9 items-center gap-1 rounded-full px-2 text-[12px] font-medium text-forest hover:bg-cream-3">
+          <ArrowLeft className="size-3.5" aria-hidden /> Ganti
+        </button>
+      </div>
       <div className="grid grid-cols-2 rounded-full bg-cream-3 p-1 text-sm">
         {(['login', 'signup'] as const).map((t) => (
           <button
@@ -248,7 +310,7 @@ function AuthBody({ initialTab, onAuthed }: { initialTab: 'login' | 'signup'; on
         {error && <p role="alert" className="rounded-lg bg-[#F7E1E3] px-3 py-2 text-[12.5px] text-[#8A2F3B]">{error}</p>}
         <button type="submit" className={`${btnPrimary} w-full`} disabled={!canSubmit || busy !== null}>
           {busy === 'email' && <Loader2 className="size-4 animate-spin" />}
-          {tab === 'login' ? 'Masuk' : 'Buat Akun'}
+          {tab === 'login' ? 'Masuk' : role === 'mitra' ? 'Daftar sebagai Mitra' : 'Buat Akun'}
         </button>
         <p className="text-center text-[11px] text-muted">{cloud ? 'Profil, lemari, dan outfit Anda tersimpan di akun dan ikut ke perangkat lain.' : 'Mode demo: data tersimpan lokal di browser Anda.'}</p>
       </form>

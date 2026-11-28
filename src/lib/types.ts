@@ -128,7 +128,11 @@ export interface BodyMeasurements {
   footCm: number;
 }
 
+/** Pengguna shops and styles; Mitra Penjual does that too and also runs a store. */
+export type AccountRole = 'pengguna' | 'mitra';
+
 export interface UserProfile {
+  role: AccountRole;
   name: string;
   email: string;
   gender: Gender;

@@ -1,5 +1,7 @@
 'use client';
 
+import type { AccountRole } from '@/lib/types';
+
 import { createContext, useContext } from 'react';
 import type { ViewKey } from '@/lib/types';
 
@@ -8,7 +10,7 @@ export interface AppActions {
   go: (v: ViewKey) => void;
   openProduct: (id: string) => void;
   openStore: (id: string) => void;
-  openAuth: (tab?: 'login' | 'signup') => void;
+  openAuth: (tab?: 'login' | 'signup', role?: AccountRole) => void;
   openOnboarding: () => void;
   openMeasurements: () => void;
   openCompare: (a?: string, b?: string) => void;

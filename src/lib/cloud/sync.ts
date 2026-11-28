@@ -191,6 +191,7 @@ function productToRow(p: UMKMProductPost, storeUrl?: string): Row {
 
 function profileFromRow(r: Row): UserProfile {
   return {
+    role: r.role === 'mitra' ? 'mitra' : 'pengguna',
     name: r.name as string,
     email: r.email as string,
     gender: r.gender as UserProfile['gender'],
@@ -207,6 +208,7 @@ function profileFromRow(r: Row): UserProfile {
 function profileToRow(p: UserProfile, id: string): Row {
   return {
     id,
+    role: p.role,
     name: p.name,
     email: p.email,
     gender: p.gender,
@@ -564,7 +566,12 @@ async function loadUser(s: State, user: User): Promise<void> {
     silent(STORE_KEYS.profile, serverProfile);
   } else {
     // First sign-in: keep what the user filled in as a guest, with the account's name and email.
-    const merged: UserProfile = { ...localProfile, name: serverProfile?.name || localProfile.name, email: user.email ?? localProfile.email };
+    const merged: UserProfile = {
+      ...localProfile,
+      role: serverProfile?.role === 'mitra' || localProfile.role === 'mitra' ? 'mitra' : 'pengguna',
+      name: serverProfile?.name || localProfile.name,
+      email: user.email ?? localProfile.email,
+    };
     silent(STORE_KEYS.profile, merged);
     push(STORE_KEYS.profile, null, merged);
   }
@@ -629,6 +636,37 @@ async function onSignedIn(s: State, user: User): Promise<void> {
   });
   await loadPublic(s); // own posts and owned stores depend on who is signed in
   await loadUser(s, user);
+  applyPendingRole();
+}
+
+const PENDING_ROLE_KEY = 'outfitly:pending_role';
+
+/**
+ * Remember the role picked in the sign-in dialog. A Google sign-in leaves the
+ * page, so the choice is applied once the account's data has loaded.
+ */
+export function setPendingRole(role: UserProfile['role']): void {
+  try {
+    window.localStorage.setItem(PENDING_ROLE_KEY, role);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** Picking Mitra Penjual on an existing Pengguna account upgrades it; a Mitra stays a Mitra. */
+export function applyPendingRole(): void {
+  let pending: string | null = null;
+  try {
+    pending = window.localStorage.getItem(PENDING_ROLE_KEY);
+    window.localStorage.removeItem(PENDING_ROLE_KEY);
+  } catch {
+    return;
+  }
+  if (pending !== 'mitra') return;
+  const profile = readStore<UserProfile>(STORE_KEYS.profile, DEFAULT_PROFILE);
+  if (profile.role === 'mitra') return;
+  writeStore(STORE_KEYS.profile, { ...profile, role: 'mitra' });
+  emitToast('Akun kamu sekarang terdaftar sebagai Mitra Penjual');
 }
 
 async function onSignedOut(s: State): Promise<void> {

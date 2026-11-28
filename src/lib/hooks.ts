@@ -171,3 +171,19 @@ export function migrateDemoCatalog(): void {
     /* storage unavailable: the app falls back to the built-in catalog */
   }
 }
+
+/** Signed in as a Mitra Penjual (who can also use every shopper feature). */
+export function useIsMitra(): boolean {
+  const [session] = useSession();
+  const [profile] = useProfile();
+  return !!session && profile.role === 'mitra';
+}
+
+/** Upgrades a signed-in Pengguna to Mitra Penjual; the cloud sync saves it. */
+export function useBecomeMitra(): () => void {
+  const [, setProfile] = useProfile();
+  return useCallback(() => {
+    setProfile((p) => ({ ...p, role: 'mitra' }));
+    emitToast('Akun kamu sekarang terdaftar sebagai Mitra Penjual');
+  }, [setProfile]);
+}

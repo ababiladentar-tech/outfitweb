@@ -7,7 +7,7 @@ import { ProductImage } from './GarmentArt';
 import { btnGhost, btnPrimary, inputCls, labelCls } from './ui';
 import { CATEGORY_LABEL, CITIES, CONDITION_LABEL, SELLER_TYPE_LABEL, STYLE_LABEL } from '@/lib/data';
 import { compressImage, extractGarmentInfo, nearestColorName } from '@/lib/color';
-import { useAnalytics, useCatalog, useNotifications, useSellerStoreId, useSession, useStores } from '@/lib/hooks';
+import { useAnalytics, useBecomeMitra, useCatalog, useIsMitra, useNotifications, useSellerStoreId, useSession, useStores } from '@/lib/hooks';
 import { cloudEnabled } from '@/lib/cloud/client';
 import { claimStore } from '@/lib/cloud/sync';
 import { emitToast, formatCount, formatIDR, uid, useHydrated } from '@/lib/storage';
@@ -29,10 +29,13 @@ export function SellerDashboardView() {
   const [tab, setTab] = useState<Tab>('catalog');
   const [adding, setAdding] = useState(false);
   const hydrated = useHydrated();
+  const isMitra = useIsMitra();
   const cloud = cloudEnabled();
   // Hosted mode: a seller only manages stores tied to their account.
   const stores = cloud ? allStores.filter((s) => session?.id && s.ownerId === session.id) : allStores;
   const store = stores.find((s) => s.id === storeId) ?? stores[0];
+
+  if (hydrated && !isMitra) return <MitraGate signedIn={!!session} />;
 
   if (cloud && hydrated && (!session?.id || !store || adding)) {
     return <StoreSetup signedIn={!!session?.id} onReady={(id) => { setStoreId(id); setAdding(false); setTab('catalog'); }} onCancel={store ? () => setAdding(false) : undefined} />;
@@ -620,6 +623,29 @@ function StoreSetup({ signedIn, onReady, onCancel }: { signedIn: boolean; onRead
           </ul>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Shown to guests and Pengguna accounts: the dashboard is for Mitra Penjual only. */
+function MitraGate({ signedIn }: { signedIn: boolean }) {
+  const { openAuth } = useApp();
+  const becomeMitra = useBecomeMitra();
+  return (
+    <div className="mx-auto max-w-lg px-4 py-16 text-center">
+      <Store className="mx-auto size-8 text-forest" strokeWidth={1.3} />
+      <h1 className="mt-3 font-serif text-[32px] leading-tight text-forest">Khusus <em>Mitra Penjual</em></h1>
+      <p className="mt-2 text-sm text-muted">
+        Dashboard ini untuk UMKM dan penjual thrift yang ingin membuka toko di Outfitly: unggah produk dengan ukuran cm, atur profil toko, dan pantau kunjungan serta klik WhatsApp. Sebagai Mitra, kamu tetap bisa belanja dan memakai Stylist.
+      </p>
+      {signedIn ? (
+        <button type="button" className={`${btnPrimary} mt-6`} onClick={becomeMitra}>Jadikan akun saya Mitra Penjual</button>
+      ) : (
+        <div className="mt-6 flex flex-col items-center gap-2 sm:flex-row sm:justify-center">
+          <button type="button" className={btnPrimary} onClick={() => openAuth('signup', 'mitra')}>Daftar sebagai Mitra</button>
+          <button type="button" className={btnGhost} onClick={() => openAuth('login', 'mitra')}>Masuk sebagai Mitra</button>
+        </div>
+      )}
     </div>
   );
 }

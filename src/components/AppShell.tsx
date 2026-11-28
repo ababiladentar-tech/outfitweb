@@ -19,9 +19,9 @@ import { StudioView } from './StudioView';
 import { StylistView } from './StylistView';
 import { WardrobeView } from './WardrobeView';
 import { Modal, Toaster } from './ui';
-import { migrateDemoCatalog, useBookmarks, useCatalog, useNotifications, useProfile, useSavedOutfits, useSession } from '@/lib/hooks';
+import { migrateDemoCatalog, useBecomeMitra, useIsMitra, useBookmarks, useCatalog, useNotifications, useProfile, useSavedOutfits, useSession } from '@/lib/hooks';
 import { emitToast, formatIDR, useHydrated, useOverlayOpen } from '@/lib/storage';
-import type { ViewKey } from '@/lib/types';
+import type { AccountRole, ViewKey } from '@/lib/types';
 
 const NAV: { key: ViewKey; label: string; short: string; icon: React.ComponentType<{ className?: string; strokeWidth?: number }> }[] = [
   { key: 'home', label: 'Beranda', short: 'Beranda', icon: Home },
@@ -37,7 +37,7 @@ export function AppShell() {
   const [view, setView] = useState<ViewKey>('home');
   const [productId, setProductId] = useState<string | null>(null);
   const [storeId, setStoreId] = useState<string | null>(null);
-  const [auth, setAuth] = useState<{ open: boolean; tab: 'login' | 'signup' }>({ open: false, tab: 'login' });
+  const [auth, setAuth] = useState<{ open: boolean; tab: 'login' | 'signup'; role?: AccountRole }>({ open: false, tab: 'login' });
   const [onboarding, setOnboarding] = useState(false);
   const [measure, setMeasure] = useState(false);
   const [compare, setCompare] = useState<[string, string] | null>(null);
@@ -60,7 +60,8 @@ export function AppShell() {
   // Someone who signed up with Google skips the signup form, so offer the
   // style profile once after their first sign-in.
   useEffect(() => {
-    if (!cloudEnabled() || !session?.id || profile.onboarded) return;
+    // A new Mitra lands on the store setup instead; the style profile can wait.
+    if (!cloudEnabled() || !session?.id || profile.onboarded || profile.role === 'mitra') return;
     const flag = `outfitly:onboard-asked:${session.id}`;
     if (window.sessionStorage.getItem(flag)) return;
     const t = window.setTimeout(() => {
@@ -68,7 +69,7 @@ export function AppShell() {
       setOnboarding(true);
     }, 2500);
     return () => window.clearTimeout(t);
-  }, [session?.id, profile.onboarded]);
+  }, [session?.id, profile.onboarded, profile.role]);
 
   const go = useCallback((v: ViewKey) => {
     setView(v);
@@ -98,7 +99,7 @@ export function AppShell() {
         setProductId(null);
         setStoreId(id);
       },
-      openAuth: (tab = 'login') => setAuth({ open: true, tab }),
+      openAuth: (tab = 'login', role) => setAuth({ open: true, tab, role }),
       openOnboarding: () => setOnboarding(true),
       openMeasurements: () => setMeasure(true),
       openCompare: (a, b) => {
@@ -141,10 +142,12 @@ export function AppShell() {
       <AuthModal
         open={auth.open}
         initialTab={auth.tab}
+        initialRole={auth.role}
         onClose={() => setAuth((a) => ({ ...a, open: false }))}
-        onAuthed={(isNew) => {
+        onAuthed={(isNew, role) => {
           setAuth((a) => ({ ...a, open: false }));
-          if (isNew) window.setTimeout(() => setOnboarding(true), 220);
+          if (role === 'mitra') go('seller');
+          else if (isNew) window.setTimeout(() => setOnboarding(true), 220);
         }}
       />
       <Onboarding open={onboarding} onClose={() => setOnboarding(false)} onDone={() => { setOnboarding(false); go('catalog'); }} />
@@ -170,6 +173,7 @@ function Logo({ onClick }: { onClick: () => void }) {
 function Navbar({ view, go, onNotif, onUser }: { view: ViewKey; go: (v: ViewKey) => void; onNotif: () => void; onUser: () => void }) {
   const { openSaved, openHelp, openAuth } = useAppCtx();
   const [session] = useSession();
+  const isMitra = useIsMitra();
   const [notifs] = useNotifications();
   const [outfits] = useSavedOutfits();
   const hydrated = useHydrated();
@@ -180,7 +184,7 @@ function Navbar({ view, go, onNotif, onUser }: { view: ViewKey; go: (v: ViewKey)
       <div className="mx-auto flex h-[60px] max-w-7xl items-center gap-4 px-4 md:h-[72px] md:px-8">
         <Logo onClick={() => go('home')} />
         <nav className="ml-6 hidden items-center gap-1 md:flex">
-          {[...NAV, { key: 'seller' as ViewKey, label: 'Mitra Penjual', short: '', icon: Store }].map((n) => (
+          {[...NAV, ...(isMitra ? [{ key: 'seller' as ViewKey, label: 'Dashboard Penjual', short: '', icon: Store }] : [])].map((n) => (
             <button
               key={n.key}
               type="button"
@@ -350,6 +354,8 @@ function UserMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [session, setSession] = useSession();
   const [profile] = useProfile();
   const { openOnboarding, openMeasurements, openAuth, go, openHelp } = useAppCtx();
+  const isMitra = useIsMitra();
+  const becomeMitra = useBecomeMitra();
   const item = (icon: React.ReactNode, label: string, fn: () => void) => (
     <button type="button" onClick={() => { onClose(); fn(); }} className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm text-forest hover:bg-cream-2">
       {icon} {label}
@@ -360,7 +366,7 @@ function UserMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
       <div className="p-3">
         {session && (
           <div className="mb-3 rounded-2xl bg-forest p-4 text-cream">
-            <p className="text-[12px] text-sage-2">Profil & Gaya Personal</p>
+            <p className="text-[12px] text-sage-2">{profile.role === 'mitra' ? 'Mitra Penjual' : 'Pengguna'} . Profil & Gaya Personal</p>
             <p className="mt-1 text-sm">Undertone {profile.skinTone} . {profile.bodyShape.replace('_', ' ')} . wajah {profile.faceShape}</p>
             <p className="mt-1 text-xs text-cream/70">LD {profile.measurements.chestCm} . LP {profile.measurements.waistCm} . Bahu {profile.measurements.shoulderCm} . TB {profile.measurements.heightCm} cm</p>
             <div className="mt-2 flex gap-1">{profile.palette.map((c) => <span key={c} className="size-4 rounded-full border border-cream/30" style={{ background: c }} />)}</div>
@@ -369,7 +375,15 @@ function UserMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
         {!session && item(<User className="size-4" strokeWidth={1.5} />, 'Masuk / Daftar', () => openAuth('login'))}
         {item(<UserCog className="size-4" strokeWidth={1.5} />, 'Profil & Gaya Personal', openOnboarding)}
         {item(<Ruler className="size-4" strokeWidth={1.5} />, 'Panduan Ukuran (cm)', openMeasurements)}
-        {item(<Store className="size-4" strokeWidth={1.5} />, 'Dashboard Mitra Penjual', () => go('seller'))}
+        {isMitra
+          ? item(<Store className="size-4" strokeWidth={1.5} />, 'Dashboard Mitra Penjual', () => go('seller'))
+          : item(<Store className="size-4" strokeWidth={1.5} />, 'Daftar jadi Mitra Penjual', () => {
+              if (!session) openAuth('signup', 'mitra');
+              else {
+                becomeMitra();
+                go('seller');
+              }
+            })}
         {item(<HelpCircle className="size-4" strokeWidth={1.5} />, 'Bantuan', openHelp)}
         {session && item(<LogOut className="size-4" strokeWidth={1.5} />, 'Keluar', () => { setSession(null); emitToast('Anda telah keluar', 'info'); })}
       </div>
@@ -401,6 +415,10 @@ function HelpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
 }
 
 function Footer({ go }: { go: (v: ViewKey) => void }) {
+  const isMitra = useIsMitra();
+  const [session] = useSession();
+  const becomeMitra = useBecomeMitra();
+  const { openAuth } = useAppCtx();
   return (
     <footer className="mt-8 border-t border-line bg-cream-2">
       <div className="mx-auto grid max-w-7xl gap-8 px-5 py-10 md:grid-cols-[1.4fr_1fr_1fr] md:px-8">
@@ -414,7 +432,20 @@ function Footer({ go }: { go: (v: ViewKey) => void }) {
         </div>
         <div className="text-sm">
           <p className="mb-2 text-[12px] font-semibold text-sage-ink">Mitra</p>
-          <button type="button" onClick={() => go('seller')} className="flex min-h-11 items-center text-forest hover:underline">Dashboard Penjual</button>
+          <button
+            type="button"
+            onClick={() => {
+              if (isMitra) go('seller');
+              else if (!session) openAuth('signup', 'mitra');
+              else {
+                becomeMitra();
+                go('seller');
+              }
+            }}
+            className="flex min-h-11 items-center text-forest hover:underline"
+          >
+            {isMitra ? 'Dashboard Penjual' : 'Daftar jadi Mitra Penjual'}
+          </button>
           <p className="py-1 text-muted">mitra@outfitly.id</p>
         </div>
       </div>

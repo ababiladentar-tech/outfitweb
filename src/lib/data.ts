@@ -75,6 +75,7 @@ export const DEFAULT_MEASUREMENTS: BodyMeasurements = {
 };
 
 export const DEFAULT_PROFILE: UserProfile = {
+  role: 'pengguna',
   name: 'Tamu Outfitly',
   email: '',
   gender: 'girl',
